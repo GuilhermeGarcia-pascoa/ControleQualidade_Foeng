@@ -9,7 +9,7 @@ app.use(express.json({ limit: '50mb' }));
 const dbConfig = {
     host: 'localhost',
     user: 'root',
-    password: 'A_TUA_PASSWORD',
+    password: 'Admin@123+',
     database: 'foeng_db'
 };
 
