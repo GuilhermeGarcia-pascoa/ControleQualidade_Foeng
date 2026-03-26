@@ -34,7 +34,7 @@ const upload = multer({
 const dbConfig = {
   host: 'localhost',
   user: 'root',
-  password: 'Admin@123+',
+  password: '',
   database: 'foeng_db',
 };
 

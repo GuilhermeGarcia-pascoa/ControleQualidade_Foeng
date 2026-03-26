@@ -304,7 +304,15 @@ Future<bool> adicionarMembroAoProjeto(int utilizadorId, int projetoId) async {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'utilizador_id': utilizadorId, 'projeto_id': projetoId}),
     );
-    return response.statusCode == 200;
+    
+    // ─── DIAGNÓSTICO DO BACKEND ───
+    print('📥 POST /utilizador_projeto');
+    print('📥 Status Code: ${response.statusCode}');
+    print('📥 Resposta: ${response.body}');
+    // ──────────────────────────────
+
+    // Aceita tanto 200 (OK) como 201 (Created)
+    return response.statusCode == 200 || response.statusCode == 201;
   } catch (e) {
     print("❌ ERRO adicionarMembro: $e");
     return false;
