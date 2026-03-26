@@ -18,11 +18,25 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Controle Qualidade FOENG',
       debugShowCheckedModeBanner: false,
+      
+      // 1. Define o tema escuro como padrão
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1A237E), secondary: const Color(0xFFFF6F00)),
+        brightness: Brightness.dark, // <--- Força as cores escuras
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1A237E),
+          brightness: Brightness.dark, // <--- Garante que o esquema de cores seja escuro
+          secondary: const Color(0xFFFF6F00),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF121212), // Um preto/cinza muito escuro
         useMaterial3: true,
       ),
-      home: initialUser == null ? const LoginScreen() : DashboardScreen(perfil: initialUser!['perfil']),
+      
+      // 2. Força a app a usar sempre este tema, ignorando o sistema do telemóvel
+      themeMode: ThemeMode.dark, 
+
+      home: initialUser == null 
+          ? const LoginScreen() 
+          : DashboardScreen(perfil: initialUser!['perfil']),
     );
   }
 }
