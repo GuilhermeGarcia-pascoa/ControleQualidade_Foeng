@@ -39,6 +39,21 @@ class DatabaseHelper {
     }
   }
 
+  Future<List<Map<String, dynamic>>> procurarUtilizadoresPorTexto(String texto) async {
+  try {
+    final encoded = Uri.encodeComponent(texto);
+    final response = await http.get(Uri.parse('$baseUrl/utilizadores/pesquisar/$encoded'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['utilizadores']);
+    }
+    return [];
+  } catch (e) {
+    print("❌ ERRO procurarUtilizadoresPorTexto: $e");
+    return [];
+  }
+}
+
   // ─── PROJETOS ─────────────────────────────────────────────
   Future<List<Projeto>> getProjetos() async {
     try {

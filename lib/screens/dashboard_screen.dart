@@ -5,6 +5,7 @@ import 'nos_screen.dart';
 import '../utils/session.dart';
 import 'login_screen.dart';
 import '../utils/toast.dart';
+import 'gerir_membros_screen.dart';
 
 // ─── PALETA ESCURA ────────────────────────────────────────
 class _C {
@@ -913,6 +914,12 @@ class _ProjetoCardState extends State<_ProjetoCard>
                                 case 'apagar':
                                   widget.onApagar();
                                   break;
+                               case 'membros':
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => GerirMembrosScreen(projeto: widget.projeto)),
+  );
+  break;
                               }
                             },
                             itemBuilder: (_) => [
@@ -928,6 +935,14 @@ class _ProjetoCardState extends State<_ProjetoCard>
                                           fontSize: 14)),
                                 ]),
                               ),
+                              const PopupMenuItem(
+  value: 'membros',
+  child: Row(children: [
+    Icon(Icons.group_outlined, color: Color(0xFF4527A0), size: 20),
+    SizedBox(width: 10),
+    Text('Gerir Membros'),
+  ]),
+),
                               PopupMenuItem(
                                 value: 'copiar',
                                 child: Row(children: [
