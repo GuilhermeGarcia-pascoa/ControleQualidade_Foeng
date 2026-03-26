@@ -238,7 +238,7 @@ class AppShadows {
 class AppDecorations {
   AppDecorations._();
  
-  static BoxDecoration card = BoxDecoration(
+  static BoxDecoration card = const BoxDecoration(
     color: AppColors.surface,
     borderRadius: AppRadius.borderLg,
     boxShadow: AppShadows.sm,
@@ -250,14 +250,14 @@ class AppDecorations {
     border: Border.all(color: AppColors.border, width: 1),
   );
  
-  static BoxDecoration cardAccent = BoxDecoration(
+  static BoxDecoration cardAccent = const BoxDecoration(
     color: AppColors.surface,
     borderRadius: AppRadius.borderLg,
     boxShadow: AppShadows.sm,
     border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
   );
  
-  static BoxDecoration headerGradient = BoxDecoration(
+  static BoxDecoration headerGradient = const BoxDecoration(
     gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -265,7 +265,7 @@ class AppDecorations {
     ),
   );
  
-  static BoxDecoration screenBackground = BoxDecoration(
+  static BoxDecoration screenBackground = const BoxDecoration(
     color: AppColors.background,
   );
  
@@ -287,19 +287,19 @@ class AppDecorations {
       filled: true,
       fillColor: AppColors.surfaceAlt,
       contentPadding: AppSpacing.inputPadding,
-      border: OutlineInputBorder(
+      border: const OutlineInputBorder(
         borderRadius: AppRadius.borderMd,
         borderSide: BorderSide(color: AppColors.border),
       ),
-      enabledBorder: OutlineInputBorder(
+      enabledBorder: const OutlineInputBorder(
         borderRadius: AppRadius.borderMd,
         borderSide: BorderSide(color: AppColors.border),
       ),
-      focusedBorder: OutlineInputBorder(
+      focusedBorder: const OutlineInputBorder(
         borderRadius: AppRadius.borderMd,
         borderSide: BorderSide(color: AppColors.borderFocus, width: 2),
       ),
-      errorBorder: OutlineInputBorder(
+      errorBorder: const OutlineInputBorder(
         borderRadius: AppRadius.borderMd,
         borderSide: BorderSide(color: AppColors.error),
       ),
@@ -317,7 +317,7 @@ class AppButtonStyles {
     backgroundColor: AppColors.accent,
     foregroundColor: AppColors.textOnDark,
     padding: AppSpacing.buttonPadding,
-    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+    shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
     elevation: 0,
     textStyle: AppText.buttonMedium,
   );
@@ -326,23 +326,23 @@ class AppButtonStyles {
     backgroundColor: AppColors.primary,
     foregroundColor: AppColors.textOnDark,
     padding: AppSpacing.buttonPadding,
-    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+    shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
     elevation: 0,
     textStyle: AppText.buttonMedium,
   );
  
   static ButtonStyle outlined = OutlinedButton.styleFrom(
     foregroundColor: AppColors.primary,
-    side: BorderSide(color: AppColors.primary, width: 1.5),
+    side: const BorderSide(color: AppColors.primary, width: 1.5),
     padding: AppSpacing.buttonPadding,
-    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+    shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
     textStyle: AppText.buttonMedium,
   );
  
   static ButtonStyle ghost = TextButton.styleFrom(
     foregroundColor: AppColors.accent,
     padding: AppSpacing.buttonPadding,
-    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+    shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
     textStyle: AppText.buttonMedium,
   );
  
@@ -350,7 +350,7 @@ class AppButtonStyles {
     backgroundColor: AppColors.error,
     foregroundColor: AppColors.textOnDark,
     padding: AppSpacing.buttonPadding,
-    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+    shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
     elevation: 0,
     textStyle: AppText.buttonMedium,
   );
@@ -384,11 +384,11 @@ class AppTheme {
       elevation: 0,
       centerTitle: false,
       titleTextStyle: AppText.headingLargeOnDark,
-      iconTheme: IconThemeData(color: AppColors.textOnDark),
+      iconTheme: const IconThemeData(color: AppColors.textOnDark),
     ),
  
     // Cards 
-    cardTheme: CardThemeData(
+    cardTheme: const CardThemeData(
       color: AppColors.surface,
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.borderLg),
@@ -402,15 +402,15 @@ class AppTheme {
       labelStyle: AppText.label,
       hintStyle: AppText.caption,
       contentPadding: AppSpacing.inputPadding,
-      border: OutlineInputBorder(
+      border: const OutlineInputBorder(
         borderRadius: AppRadius.borderMd,
         borderSide: BorderSide(color: AppColors.border),
       ),
-      enabledBorder: OutlineInputBorder(
+      enabledBorder: const OutlineInputBorder(
         borderRadius: AppRadius.borderMd,
         borderSide: BorderSide(color: AppColors.border),
       ),
-      focusedBorder: OutlineInputBorder(
+      focusedBorder: const OutlineInputBorder(
         borderRadius: AppRadius.borderMd,
         borderSide: BorderSide(color: AppColors.borderFocus, width: 2),
       ),
@@ -433,10 +433,10 @@ class AppTheme {
       selectedColor: AppColors.accent,
       labelStyle: AppText.bodySmall,
       padding: AppSpacing.chipPadding,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.borderFull),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderFull),
     ),
  
-    dividerTheme: DividerThemeData(
+    dividerTheme: const DividerThemeData(
       color: AppColors.border,
       thickness: 1,
       space: 1,
@@ -445,11 +445,11 @@ class AppTheme {
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.primary,
       contentTextStyle: AppText.bodyMediumOnDark,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
       behavior: SnackBarBehavior.floating,
     ),
  
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: AppColors.accent,
       foregroundColor: AppColors.textOnDark,
       elevation: 4,
@@ -508,7 +508,7 @@ class SectionHeader extends StatelessWidget {
             children: [
               Text(title, style: AppText.headingMedium),
               if (subtitle != null) ...[
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(subtitle!, style: AppText.caption),
               ],
             ],
@@ -585,20 +585,20 @@ class EmptyState extends StatelessWidget {
             Container(
               width: 72,
               height: 72,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.surfaceAlt,
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 32, color: AppColors.textMuted),
             ),
-            SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
             Text(title, style: AppText.headingSmall, textAlign: TextAlign.center),
             if (subtitle != null) ...[
-              SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: AppSpacing.xs),
               Text(subtitle!, style: AppText.caption, textAlign: TextAlign.center),
             ],
             if (action != null) ...[
-              SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.lg),
               action!,
             ],
           ],
@@ -618,12 +618,12 @@ class AppLoadingIndicator extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(
+          const CircularProgressIndicator(
             color: AppColors.accent,
             strokeWidth: 2.5,
           ),
           if (message != null) ...[
-            SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
             Text(message!, style: AppText.caption),
           ],
         ],

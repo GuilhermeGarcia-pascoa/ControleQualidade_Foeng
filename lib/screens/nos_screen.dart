@@ -56,8 +56,8 @@ class _NosScreenState extends State<NosScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.create_new_folder, color: Color(0xFF1A237E)),
             SizedBox(width: 10),
             Text('Nova Pasta'),
@@ -887,7 +887,7 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
                       )),
                 ],
                 if (_camposExistentes.isEmpty && _camposNovos.isEmpty)
-                  _PastaVaziaWidget(isAdmin: true),
+                  const _PastaVaziaWidget(isAdmin: true),
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(
