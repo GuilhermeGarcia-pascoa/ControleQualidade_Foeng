@@ -6,6 +6,14 @@ import 'gerir_membros_screen.dart';
 import 'mostrar_dados_screen.dart';
 import '../utils/toast.dart';
 
+// --- CORES BASE DO DARK MODE ---
+const Color bgColor = Color(0xFF121212);
+const Color cardColor = Color(0xFF1E1E1E);
+const Color dialogColor = Color(0xFF2C2C2C);
+const Color textPrimary = Colors.white;
+const Color textSecondary = Colors.white70;
+const Color textMuted = Colors.white38;
+
 class NosScreen extends StatefulWidget {
   final Projeto projeto;
   final String perfil;
@@ -40,26 +48,38 @@ class _NosScreenState extends State<NosScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.edit_outlined, color: Color(0xFF1A237E)),
+          Icon(Icons.edit_outlined, color: Colors.blueAccent),
           SizedBox(width: 10),
-          Text('Renomear Pasta'),
+          Text('Renomear Pasta', style: TextStyle(color: textPrimary)),
         ]),
         content: TextField(
           controller: nomeC,
           autofocus: true,
+          style: const TextStyle(color: textPrimary),
           decoration: InputDecoration(
             labelText: 'Novo nome',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            prefixIcon: const Icon(Icons.folder_outlined),
+            labelStyle: const TextStyle(color: textSecondary),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: textMuted),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.blueAccent),
+            ),
+            prefixIcon: const Icon(Icons.folder_outlined, color: textSecondary),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: textSecondary))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A237E),
+              backgroundColor: Colors.blueAccent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
@@ -85,11 +105,12 @@ class _NosScreenState extends State<NosScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
+          backgroundColor: cardColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
-            Icon(Icons.drive_file_move_outlined, color: Color(0xFF0277BD)),
+            Icon(Icons.drive_file_move_outlined, color: Colors.lightBlue),
             SizedBox(width: 10),
-            Text('Mover Pasta'),
+            Text('Mover Pasta', style: TextStyle(color: textPrimary)),
           ]),
           content: SizedBox(
             width: double.maxFinite,
@@ -97,16 +118,17 @@ class _NosScreenState extends State<NosScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mover "${no.nome}" para:', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                Text('Mover "${no.nome}" para:', style: const TextStyle(fontSize: 13, color: textSecondary)),
                 const SizedBox(height: 8),
                 RadioListTile<No?>(
                   value: null,
                   groupValue: destinoSelecionado,
-                  title: const Text('Raiz do projeto', style: TextStyle(fontWeight: FontWeight.bold)),
-                  secondary: const Icon(Icons.home_outlined, color: Color(0xFF1A237E)),
+                  activeColor: Colors.lightBlue,
+                  title: const Text('Raiz do projeto', style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary)),
+                  secondary: const Icon(Icons.home_outlined, color: Colors.lightBlue),
                   onChanged: (v) => setStateDialog(() => destinoSelecionado = v),
                 ),
-                const Divider(),
+                const Divider(color: textMuted),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 250),
                   child: ListView.builder(
@@ -115,8 +137,9 @@ class _NosScreenState extends State<NosScreen> {
                     itemBuilder: (context, i) => RadioListTile<No?>(
                       value: nosDisponiveis[i],
                       groupValue: destinoSelecionado,
-                      title: Text(nosDisponiveis[i].nome),
-                      secondary: const Icon(Icons.folder_outlined, color: Color(0xFF1A237E)),
+                      activeColor: Colors.lightBlue,
+                      title: Text(nosDisponiveis[i].nome, style: const TextStyle(color: textPrimary)),
+                      secondary: const Icon(Icons.folder_outlined, color: textSecondary),
                       onChanged: (v) => setStateDialog(() => destinoSelecionado = v),
                     ),
                   ),
@@ -125,10 +148,12 @@ class _NosScreenState extends State<NosScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar', style: TextStyle(color: textSecondary))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0277BD),
+                backgroundColor: Colors.lightBlue,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () async {
@@ -146,24 +171,24 @@ class _NosScreenState extends State<NosScreen> {
   }
 
   void _copiarNo(No no) async {
-    // ── Passo 1: perguntar se inclui registos ──────────────────
     bool? incluirRegistos = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
-          Icon(Icons.copy_outlined, color: Color(0xFF00695C)),
+          Icon(Icons.copy_outlined, color: Colors.tealAccent),
           SizedBox(width: 10),
-          Text('Copiar Pasta'),
+          Text('Copiar Pasta', style: TextStyle(color: textPrimary)),
         ]),
-        content: const Text('Queres incluir os registos (dados submetidos) na cópia?'),
+        content: const Text('Queres incluir os registos (dados submetidos) na cópia?', style: TextStyle(color: textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Não, só estrutura'),
+            child: const Text('Não, só estrutura', style: TextStyle(color: textSecondary)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00695C)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Sim, incluir registos', style: TextStyle(color: Colors.white)),
           ),
@@ -173,7 +198,6 @@ class _NosScreenState extends State<NosScreen> {
 
     if (incluirRegistos == null) return;
 
-    // ── Passo 2: navegador de destino (tipo explorador de ficheiros) ──
     final projetos = await DatabaseHelper.instance.getProjetos();
     if (!mounted) return;
 
@@ -187,12 +211,11 @@ class _NosScreenState extends State<NosScreen> {
 
     if (resultado == null) return;
 
-    // ── Passo 3: executar a cópia ───────────────────────────────
     if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.tealAccent)),
     );
 
     await DatabaseHelper.instance.copiarNo(
@@ -229,30 +252,42 @@ class _NosScreenState extends State<NosScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.create_new_folder, color: Color(0xFF1A237E)),
+            Icon(Icons.create_new_folder, color: Colors.blueAccent),
             SizedBox(width: 10),
-            Text('Nova Pasta'),
+            Text('Nova Pasta', style: TextStyle(color: textPrimary)),
           ],
         ),
         content: TextField(
           controller: nomeC,
           autofocus: true,
+          style: const TextStyle(color: textPrimary),
           decoration: InputDecoration(
             labelText: 'Nome da pasta',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            labelStyle: const TextStyle(color: textSecondary),
             filled: true,
-            fillColor: Colors.grey.shade50,
-            prefixIcon: const Icon(Icons.folder, color: Color(0xFF1A237E)),
+            fillColor: dialogColor,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.transparent),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.blueAccent),
+            ),
+            prefixIcon: const Icon(Icons.folder, color: Colors.blueAccent),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: textSecondary))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A237E),
+              backgroundColor: Colors.blueAccent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
@@ -285,27 +320,29 @@ class _NosScreenState extends State<NosScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Apagar Pasta', style: TextStyle(color: Colors.red)),
+        title: const Text('Apagar Pasta', style: TextStyle(color: Colors.redAccent)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+            const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 48),
             const SizedBox(height: 12),
             Text(
               'Tens a certeza que queres apagar "${no.nome}" e todo o seu conteúdo?\n\nEsta ação não pode ser desfeita.',
               textAlign: TextAlign.center,
+              style: const TextStyle(color: textPrimary),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: const Text('Cancelar', style: TextStyle(color: textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.redAccent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(context, true),
@@ -330,14 +367,14 @@ class _NosScreenState extends State<NosScreen> {
     final temCampos = campos.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
+      backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+              colors: [Color(0xFF151521), Color(0xFF1E1E2C)], // Mais escuro que o original
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -377,7 +414,7 @@ class _NosScreenState extends State<NosScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E)))
+          ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
               physics: const BouncingScrollPhysics(),
@@ -399,11 +436,11 @@ class _NosScreenState extends State<NosScreen> {
                           builder: (_) => MostrarDadosScreen(noId: widget.pai!.id!),
                         ),
                       ),
-                      icon: const Icon(Icons.table_view),
-                      label: const Text('Ver Registos Desta Pasta'),
+                      icon: const Icon(Icons.table_view, color: Colors.white),
+                      label: const Text('Ver Registos Desta Pasta', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
-                        foregroundColor: Colors.white,
+                        backgroundColor: dialogColor,
+                        side: const BorderSide(color: Colors.blueAccent, width: 1),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         minimumSize: const Size(double.infinity, 50),
@@ -415,7 +452,7 @@ class _NosScreenState extends State<NosScreen> {
                     padding: const EdgeInsets.only(bottom: 12, left: 4),
                     child: Text(
                       '${nos.length} pasta${nos.length != 1 ? 's' : ''}',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                      style: const TextStyle(fontSize: 13, color: textSecondary, fontWeight: FontWeight.w500),
                     ),
                   ),
                 if (nos.isEmpty && !temCampos)
@@ -455,9 +492,9 @@ class _NosScreenState extends State<NosScreen> {
                     child: FloatingActionButton(
                       heroTag: 'campos',
                       onPressed: _abrirCriarCampos,
-                      backgroundColor: const Color(0xFFFF6F00),
+                      backgroundColor: Colors.orangeAccent,
                       tooltip: 'Gerir Campos',
-                      child: const Icon(Icons.list_alt, color: Colors.white),
+                      child: const Icon(Icons.list_alt, color: bgColor),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -467,7 +504,7 @@ class _NosScreenState extends State<NosScreen> {
                   child: FloatingActionButton(
                     heroTag: 'pasta',
                     onPressed: _criarNo,
-                    backgroundColor: const Color(0xFF1A237E),
+                    backgroundColor: Colors.blueAccent,
                     tooltip: 'Nova Pasta',
                     child: const Icon(Icons.create_new_folder, color: Colors.white),
                   ),
@@ -480,8 +517,7 @@ class _NosScreenState extends State<NosScreen> {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// NAVEGADOR DE DESTINO — funciona como explorador de ficheiros
-// Permite navegar projeto → raiz → subpastas → ... com breadcrumb e pesquisa
+// NAVEGADOR DE DESTINO — adaptado para Dark Mode
 // ════════════════════════════════════════════════════════════════════════════
 class _NavegadorDestinoCopia extends StatefulWidget {
   final List<Projeto> projetos;
@@ -498,7 +534,6 @@ class _NavegadorDestinoCopia extends StatefulWidget {
 
 class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
   late int _projetoAtualId;
-  // Pilha de navegação: vazia = raiz do projeto
   final List<No> _pilha = [];
   List<No> _nosAtuais = [];
   bool _loading = true;
@@ -551,7 +586,6 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
   }
 
   void _navegarParaNivel(int nivelNaPilha) {
-    // Mantém só até ao nível clicado (inclusive)
     while (_pilha.length > nivelNaPilha + 1) {
       _pilha.removeLast();
     }
@@ -573,6 +607,7 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
     final int? paiIdAtual = _pilha.isEmpty ? null : _pilha.last.id;
 
     return Dialog(
+      backgroundColor: cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 36),
       child: LayoutBuilder(
@@ -580,12 +615,11 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-
-              // ── Cabeçalho com seletor de projeto ──────────────────────────
+              // Cabeçalho escuro
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF00695C), Color(0xFF00897B)],
+                    colors: [Color(0xFF004D40), Color(0xFF00695C)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -607,13 +641,13 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.18),
+                        color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<int>(
                           value: _projetoAtualId,
-                          dropdownColor: const Color(0xFF00695C),
+                          dropdownColor: const Color(0xFF004D40),
                           iconEnabledColor: Colors.white,
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
                           isExpanded: true,
@@ -631,13 +665,12 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                 ),
               ),
 
-              // ── Breadcrumb de navegação ────────────────────────────────────
+              // Breadcrumb (Fundo Escuro)
               Container(
-                color: Colors.grey.shade100,
+                color: bgColor,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(
                   children: [
-                    // Botão voltar
                     if (_pilha.isNotEmpty) ...[
                       InkWell(
                         onTap: _voltarAtras,
@@ -645,23 +678,21 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                         child: Container(
                           padding: const EdgeInsets.all(5),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF00695C).withOpacity(0.1),
+                            color: Colors.tealAccent.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(Icons.arrow_back_ios_new_rounded,
-                              size: 13, color: Color(0xFF00695C)),
+                              size: 13, color: Colors.tealAccent),
                         ),
                       ),
                       const SizedBox(width: 6),
                     ],
-                    // Caminho (scrollável, mostra sempre o fim)
                     Expanded(
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         reverse: true,
                         child: Row(
                           children: [
-                            // Raiz
                             GestureDetector(
                               onTap: _pilha.isNotEmpty
                                   ? () { _pilha.clear(); _carregarNos(); }
@@ -669,27 +700,26 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                               child: Row(children: [
                                 Icon(Icons.home_rounded,
                                     size: 15,
-                                    color: _pilha.isEmpty ? const Color(0xFF00695C) : Colors.grey.shade400),
+                                    color: _pilha.isEmpty ? Colors.tealAccent : textMuted),
                                 const SizedBox(width: 3),
                                 Text(
                                   _nomeProjeto,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: _pilha.isEmpty ? FontWeight.bold : FontWeight.normal,
-                                    color: _pilha.isEmpty ? const Color(0xFF00695C) : Colors.grey.shade500,
+                                    color: _pilha.isEmpty ? Colors.tealAccent : textSecondary,
                                     decoration: _pilha.isNotEmpty ? TextDecoration.underline : null,
-                                    decorationColor: Colors.grey.shade400,
+                                    decorationColor: textMuted,
                                   ),
                                 ),
                               ]),
                             ),
-                            // Cada nível da pilha
                             ..._pilha.asMap().entries.map((e) {
                               final isLast = e.key == _pilha.length - 1;
                               return Row(children: [
                                 const Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 3),
-                                  child: Icon(Icons.chevron_right, size: 13, color: Colors.grey),
+                                  child: Icon(Icons.chevron_right, size: 13, color: textMuted),
                                 ),
                                 GestureDetector(
                                   onTap: isLast ? null : () => _navegarParaNivel(e.key),
@@ -698,9 +728,9 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
-                                      color: isLast ? const Color(0xFF00695C) : Colors.grey.shade500,
+                                      color: isLast ? Colors.tealAccent : textSecondary,
                                       decoration: !isLast ? TextDecoration.underline : null,
-                                      decorationColor: Colors.grey.shade400,
+                                      decorationColor: textMuted,
                                     ),
                                   ),
                                 ),
@@ -714,47 +744,54 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                 ),
               ),
 
-              // ── Barra de pesquisa ─────────────────────────────────────────
+              // Barra de pesquisa
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
                 child: TextField(
                   controller: _pesquisaC,
                   onChanged: (v) => setState(() => _pesquisa = v),
+                  style: const TextStyle(color: textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Pesquisar nesta pasta...',
-                    prefixIcon: const Icon(Icons.search, size: 19),
+                    hintStyle: const TextStyle(color: textMuted),
+                    prefixIcon: const Icon(Icons.search, size: 19, color: textSecondary),
                     suffixIcon: _pesquisa.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear, size: 17),
+                            icon: const Icon(Icons.clear, size: 17, color: textSecondary),
                             onPressed: () { _pesquisaC.clear(); setState(() => _pesquisa = ''); },
                           )
                         : null,
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: dialogColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                   ),
                 ),
               ),
 
-              // ── Lista de subpastas ── COM FLEX PARA OCUPAR ESPAÇO DISPONÍVEL ──
+              // Lista
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
                     : _nosFiltrados.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.folder_open_rounded, size: 44, color: Colors.grey.shade300),
+                                const Icon(Icons.folder_open_rounded, size: 44, color: textMuted),
                                 const SizedBox(height: 8),
                                 Text(
                                   _pesquisa.isNotEmpty ? 'Nenhuma pasta encontrada' : 'Sem subpastas aqui',
-                                  style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                                  style: const TextStyle(color: textSecondary, fontSize: 13),
                                 ),
                                 if (_pesquisa.isEmpty) ...[
                                   const SizedBox(height: 4),
-                                  Text('Podes copiar para esta localização',
-                                      style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                                  const Text('Podes copiar para esta localização',
+                                      style: TextStyle(color: textMuted, fontSize: 11)),
                                 ],
                               ],
                             ),
@@ -769,16 +806,15 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                                 leading: Container(
                                   width: 36, height: 36,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF00695C).withOpacity(0.08),
+                                    color: Colors.tealAccent.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(9),
                                   ),
-                                  child: const Icon(Icons.folder_rounded, color: Color(0xFF00695C), size: 20),
+                                  child: const Icon(Icons.folder_rounded, color: Colors.tealAccent, size: 20),
                                 ),
                                 title: Text(n.nome,
-                                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-                                // Botão "entrar" à direita
+                                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14, color: textPrimary)),
                                 trailing: IconButton(
-                                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 15, color: Colors.grey),
+                                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 15, color: textMuted),
                                   tooltip: 'Entrar na pasta',
                                   onPressed: () => _entrarNaPasta(n),
                                   splashRadius: 18,
@@ -790,26 +826,25 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                           ),
               ),
 
-              const Divider(height: 1),
+              const Divider(height: 1, color: textMuted),
 
-              // ── Rodapé: destino atual + botão Copiar Aqui ─────────────────
+              // Rodapé
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Indicador do destino selecionado
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00695C).withOpacity(0.07),
+                        color: bgColor,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFF00695C).withOpacity(0.25)),
+                        border: Border.all(color: Colors.teal.withOpacity(0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.my_location_rounded, size: 15, color: Color(0xFF00695C)),
+                          const Icon(Icons.my_location_rounded, size: 15, color: Colors.tealAccent),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -817,7 +852,7 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                                   ? 'Raiz de "$_nomeProjeto"'
                                   : '$_nomeProjeto › ${_pilha.map((n) => n.nome).join(' › ')}',
                               style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF00695C), fontWeight: FontWeight.w600,
+                                fontSize: 12, color: Colors.tealAccent, fontWeight: FontWeight.w600,
                               ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 2,
@@ -831,13 +866,13 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
                       children: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancelar'),
+                          child: const Text('Cancelar', style: TextStyle(color: textSecondary)),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00695C),
+                              backgroundColor: Colors.teal,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
@@ -935,7 +970,7 @@ class _BotaoPreencherFormulario extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Material(
-        borderRadius: BorderRadius.circular(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // BUG CORRIGIDO AQUI
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -943,13 +978,13 @@ class _BotaoPreencherFormulario extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFFF6F00), Color(0xFFFF8F00)],
+                colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(color: const Color(0xFFFF6F00).withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 5)),
+                BoxShadow(color: const Color(0xFFE65100).withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 5)),
               ],
             ),
             padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
@@ -983,7 +1018,7 @@ class _BotaoPreencherFormulario extends StatelessWidget {
   }
 }
 
-// ─── WIDGET: CARD DE PASTA ────────────────────────────────
+// ─── WIDGET: CARD DE PASTA (DARK MODE) ────────────────────
 class _PastaCard extends StatelessWidget {
   final No no;
   final int index;
@@ -1002,8 +1037,8 @@ class _PastaCard extends StatelessWidget {
 
   Color _corPasta(int index) {
     final cores = [
-      const Color(0xFF1A237E), const Color(0xFF1565C0), const Color(0xFF0277BD),
-      const Color(0xFF00695C), const Color(0xFF2E7D32), const Color(0xFF4527A0),
+      Colors.blueAccent, Colors.purpleAccent, Colors.cyanAccent,
+      Colors.tealAccent, Colors.greenAccent, Colors.orangeAccent,
     ];
     return cores[index % cores.length];
   }
@@ -1014,10 +1049,12 @@ class _PastaCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        elevation: 2,
-        shadowColor: Colors.black12,
+        color: cardColor,
+        elevation: 0, 
+        shape: RoundedRectangleBorder( // BUG CORRIGIDO AQUI (remoção do borderRadius redundante)
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.05)), 
+        ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
@@ -1027,15 +1064,16 @@ class _PastaCard extends StatelessWidget {
               children: [
                 Container(
                   width: 48, height: 48,
-                  decoration: BoxDecoration(color: cor.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+                  decoration: BoxDecoration(color: cor.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
                   child: Icon(Icons.folder_rounded, color: cor, size: 28),
                 ),
                 const SizedBox(width: 14),
                 Expanded(child: Text(no.nome,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Color(0xFF1A1A2E)))),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: textPrimary))),
                 if (isAdmin)
                   PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert, color: Colors.grey.shade400, size: 20),
+                    icon: const Icon(Icons.more_vert, color: textSecondary, size: 20),
+                    color: dialogColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     onSelected: (valor) {
                       switch (valor) {
@@ -1047,23 +1085,23 @@ class _PastaCard extends StatelessWidget {
                     },
                     itemBuilder: (_) => [
                       const PopupMenuItem(value: 'renomear', child: Row(children: [
-                        Icon(Icons.edit_outlined, color: Color(0xFF1A237E), size: 20), SizedBox(width: 10), Text('Renomear'),
+                        Icon(Icons.edit_outlined, color: Colors.blueAccent, size: 20), SizedBox(width: 10), Text('Renomear', style: TextStyle(color: textPrimary)),
                       ])),
                       const PopupMenuItem(value: 'mover', child: Row(children: [
-                        Icon(Icons.drive_file_move_outlined, color: Color(0xFF0277BD), size: 20), SizedBox(width: 10), Text('Mover para...'),
+                        Icon(Icons.drive_file_move_outlined, color: Colors.lightBlue, size: 20), SizedBox(width: 10), Text('Mover para...', style: TextStyle(color: textPrimary)),
                       ])),
                       const PopupMenuItem(value: 'copiar', child: Row(children: [
-                        Icon(Icons.copy_outlined, color: Color(0xFF00695C), size: 20), SizedBox(width: 10), Text('Copiar para...'),
+                        Icon(Icons.copy_outlined, color: Colors.tealAccent, size: 20), SizedBox(width: 10), Text('Copiar para...', style: TextStyle(color: textPrimary)),
                       ])),
-                      const PopupMenuDivider(),
-                      PopupMenuItem(value: 'apagar', child: Row(children: [
-                        Icon(Icons.delete_outline, color: Colors.red.shade400, size: 20),
-                        const SizedBox(width: 10),
-                        Text('Apagar', style: TextStyle(color: Colors.red.shade400)),
+                      const PopupMenuDivider(height: 1),
+                      const PopupMenuItem(value: 'apagar', child: Row(children: [
+                        Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        SizedBox(width: 10),
+                        Text('Apagar', style: TextStyle(color: Colors.redAccent)),
                       ])),
                     ],
                   ),
-                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 24),
+                const Icon(Icons.chevron_right_rounded, color: textMuted, size: 24),
               ],
             ),
           ),
@@ -1073,7 +1111,7 @@ class _PastaCard extends StatelessWidget {
   }
 }
 
-// ─── WIDGET: PASTA VAZIA ──────────────────────────────────
+// ─── WIDGET: PASTA VAZIA (DARK MODE) ──────────────────────
 class _PastaVaziaWidget extends StatelessWidget {
   final bool isAdmin;
   const _PastaVaziaWidget({required this.isAdmin});
@@ -1088,19 +1126,19 @@ class _PastaVaziaWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white, shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20)],
+                color: dialogColor, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20)],
               ),
-              child: Icon(Icons.folder_open_rounded, size: 64, color: Colors.grey.shade300),
+              child: const Icon(Icons.folder_open_rounded, size: 64, color: textMuted),
             ),
             const SizedBox(height: 24),
-            Text('Pasta vazia',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+            const Text('Pasta vazia',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textSecondary)),
             const SizedBox(height: 8),
             Text(
               isAdmin ? 'Clica em 📁 para criar subpastas\nou em 📋 para adicionar campos.' : 'Ainda não há conteúdo aqui.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 14, height: 1.5),
+              style: const TextStyle(color: textMuted, fontSize: 14, height: 1.5),
             ),
           ],
         ),
@@ -1122,7 +1160,7 @@ class _FabLabel extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
           child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
         ),
         const SizedBox(width: 8),
@@ -1132,7 +1170,7 @@ class _FabLabel extends StatelessWidget {
   }
 }
 
-// ─── ECRÃ DE GERIR CAMPOS ─────────────────────────────────
+// ─── ECRÃ DE GERIR CAMPOS (DARK MODE) ─────────────────────
 class CriarCamposScreen extends StatefulWidget {
   final No no;
   final String perfil;
@@ -1169,8 +1207,9 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
+          backgroundColor: cardColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Novo Campo'),
+          title: const Text('Novo Campo', style: TextStyle(color: textPrimary)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1178,14 +1217,17 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
               children: [
                 TextField(
                   controller: nomeCampoC,
+                  style: const TextStyle(color: textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Nome do Campo',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.label_outline),
+                    labelStyle: const TextStyle(color: textSecondary),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: textMuted)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.blueAccent)),
+                    prefixIcon: const Icon(Icons.label_outline, color: textSecondary),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text('Tipo de Campo:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const Text('Tipo de Campo:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8, runSpacing: 8,
@@ -1201,13 +1243,13 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: selected ? const Color(0xFF1A237E) : Colors.grey.shade100,
+                          color: selected ? Colors.blueAccent : dialogColor,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: selected ? const Color(0xFF1A237E) : Colors.grey.shade300),
+                          border: Border.all(color: selected ? Colors.blueAccent : textMuted),
                         ),
                         child: Text('${item['icon']} $tipo',
                             style: TextStyle(
-                              color: selected ? Colors.white : Colors.black87,
+                              color: selected ? Colors.white : textSecondary,
                               fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                               fontSize: 13,
                             )),
@@ -1219,10 +1261,14 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: opcoesC,
+                    style: const TextStyle(color: textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Opções (separadas por vírgula)',
+                      labelStyle: const TextStyle(color: textSecondary),
                       hintText: 'ex: Ok, Não Ok, Danificado',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      hintStyle: const TextStyle(color: textMuted),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: textMuted)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.blueAccent)),
                     ),
                   ),
                 ],
@@ -1231,20 +1277,25 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
                   children: [
                     Checkbox(
                       value: obrigatorio,
-                      activeColor: const Color(0xFF1A237E),
+                      activeColor: Colors.blueAccent,
+                      checkColor: Colors.white,
+                      side: const BorderSide(color: textSecondary),
                       onChanged: (v) => setStateDialog(() => obrigatorio = v!),
                     ),
-                    const Text('Preenchimento Obrigatório'),
+                    const Text('Preenchimento Obrigatório', style: TextStyle(color: textPrimary)),
                   ],
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: textSecondary)),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A237E),
+                backgroundColor: Colors.blueAccent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () {
@@ -1276,7 +1327,7 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
     }
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('✅ Campos guardados com sucesso!'),
+      content: Text('✅ Campos guardados com sucesso!', style: TextStyle(color: Colors.white)),
       backgroundColor: Colors.green,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
@@ -1297,13 +1348,13 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
+      backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+            gradient: LinearGradient(colors: [Color(0xFF151521), Color(0xFF1E1E2C)],
                 begin: Alignment.topLeft, end: Alignment.bottomRight),
           ),
         ),
@@ -1330,20 +1381,20 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E)))
+          ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
               physics: const BouncingScrollPhysics(),
               children: [
                 if (_camposExistentes.isNotEmpty) ...[
-                  _SectionHeader(title: 'Campos Existentes', color: Colors.grey.shade600),
+                  const _SectionHeader(title: 'Campos Existentes', color: Colors.grey),
                   const SizedBox(height: 8),
                   ..._camposExistentes.map((c) => _CampoCard(
                       icone: _iconeCampo(c.tipoCampo), nome: c.nomeCampo, tipo: c.tipoCampo, isNovo: false)),
                   const SizedBox(height: 16),
                 ],
                 if (_camposNovos.isNotEmpty) ...[
-                  _SectionHeader(title: 'Novos Campos (por guardar)', color: Colors.orange.shade700),
+                  const _SectionHeader(title: 'Novos Campos (por guardar)', color: Colors.orangeAccent),
                   const SizedBox(height: 8),
                   ..._camposNovos.asMap().entries.map((e) => _CampoCard(
                       icone: _iconeCampo(e.value['tipo_campo']), nome: e.value['nome_campo'],
@@ -1356,7 +1407,7 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _adicionarCampo,
-        backgroundColor: const Color(0xFF1A237E),
+        backgroundColor: Colors.blueAccent,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text('Novo Campo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
@@ -1383,7 +1434,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ─── WIDGET: CAMPO CARD ───────────────────────────────────
+// ─── WIDGET: CAMPO CARD (DARK MODE) ───────────────────────
 class _CampoCard extends StatelessWidget {
   final String icone;
   final String nome;
@@ -1399,29 +1450,29 @@ class _CampoCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        borderRadius: BorderRadius.circular(14),
-        color: Colors.white,
-        elevation: isNovo ? 2 : 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), // BUG CORRIGIDO AQUI
+        color: cardColor,
+        elevation: 0,
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: isNovo ? Border.all(color: Colors.orange.shade200) : null,
+            border: Border.all(color: isNovo ? Colors.orangeAccent.withOpacity(0.5) : Colors.white.withOpacity(0.05)),
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             leading: Container(
               width: 44, height: 44,
               decoration: BoxDecoration(
-                color: isNovo ? Colors.orange.shade50 : Colors.grey.shade100,
+                color: isNovo ? Colors.orangeAccent.withOpacity(0.1) : dialogColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(child: Text(icone, style: const TextStyle(fontSize: 22))),
             ),
-            title: Text(nome, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            title: Text(nome, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: textPrimary)),
             subtitle: Text(tipo.toUpperCase(),
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500, letterSpacing: 0.5)),
+                style: const TextStyle(fontSize: 11, color: textSecondary, letterSpacing: 0.5)),
             trailing: onDelete != null
-                ? IconButton(icon: Icon(Icons.delete_outline, color: Colors.red.shade300),
+                ? IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                     onPressed: onDelete, splashRadius: 20)
                 : null,
           ),
