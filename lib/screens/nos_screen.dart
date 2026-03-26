@@ -4,6 +4,7 @@ import '../database/database_helper.dart';
 import 'preencher_tabela_screen.dart';
 import 'gerir_membros_screen.dart';
 import 'mostrar_dados_screen.dart';
+import '../utils/toast.dart';
 
 class NosScreen extends StatefulWidget {
   final Projeto projeto;
@@ -32,6 +33,179 @@ class _NosScreenState extends State<NosScreen> {
   void initState() {
     super.initState();
     _loadDados();
+  }
+
+  void _renomearNo(No no) {
+    final nomeC = TextEditingController(text: no.nome);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.edit_outlined, color: Color(0xFF1A237E)),
+          SizedBox(width: 10),
+          Text('Renomear Pasta'),
+        ]),
+        content: TextField(
+          controller: nomeC,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: 'Novo nome',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: const Icon(Icons.folder_outlined),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1A237E),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              if (nomeC.text.trim().isEmpty) return;
+              Navigator.pop(context);
+              await DatabaseHelper.instance.renomearNo(no.id!, nomeC.text.trim());
+              _loadDados();
+              Toast.mostrar(context, 'Pasta renomeada!', tipo: ToastTipo.sucesso);
+            },
+            child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _moverNo(No no) async {
+    final todosNos = await DatabaseHelper.instance.getTodosNos(widget.projeto.id!);
+    final nosDisponiveis = todosNos.where((n) => n.id != no.id && n.paiId != no.id).toList();
+    No? destinoSelecionado;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(children: [
+            Icon(Icons.drive_file_move_outlined, color: Color(0xFF0277BD)),
+            SizedBox(width: 10),
+            Text('Mover Pasta'),
+          ]),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Mover "${no.nome}" para:', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 8),
+                RadioListTile<No?>(
+                  value: null,
+                  groupValue: destinoSelecionado,
+                  title: const Text('Raiz do projeto', style: TextStyle(fontWeight: FontWeight.bold)),
+                  secondary: const Icon(Icons.home_outlined, color: Color(0xFF1A237E)),
+                  onChanged: (v) => setStateDialog(() => destinoSelecionado = v),
+                ),
+                const Divider(),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 250),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: nosDisponiveis.length,
+                    itemBuilder: (context, i) => RadioListTile<No?>(
+                      value: nosDisponiveis[i],
+                      groupValue: destinoSelecionado,
+                      title: Text(nosDisponiveis[i].nome),
+                      secondary: const Icon(Icons.folder_outlined, color: Color(0xFF1A237E)),
+                      onChanged: (v) => setStateDialog(() => destinoSelecionado = v),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0277BD),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                Navigator.pop(context);
+                await DatabaseHelper.instance.moverNo(no.id!, novoPaiId: destinoSelecionado?.id);
+                _loadDados();
+                Toast.mostrar(context, 'Pasta movida com sucesso!', tipo: ToastTipo.sucesso);
+              },
+              child: const Text('Mover', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _copiarNo(No no) async {
+    // ── Passo 1: perguntar se inclui registos ──────────────────
+    bool? incluirRegistos = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.copy_outlined, color: Color(0xFF00695C)),
+          SizedBox(width: 10),
+          Text('Copiar Pasta'),
+        ]),
+        content: const Text('Queres incluir os registos (dados submetidos) na cópia?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Não, só estrutura'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00695C)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sim, incluir registos', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (incluirRegistos == null) return;
+
+    // ── Passo 2: navegador de destino (tipo explorador de ficheiros) ──
+    final projetos = await DatabaseHelper.instance.getProjetos();
+    if (!mounted) return;
+
+    final resultado = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _NavegadorDestinoCopia(
+        projetos: projetos,
+        projetoInicialId: widget.projeto.id!,
+      ),
+    );
+
+    if (resultado == null) return;
+
+    // ── Passo 3: executar a cópia ───────────────────────────────
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    await DatabaseHelper.instance.copiarNo(
+      no.id!,
+      novoPaiId: resultado['paiId'] as int?,
+      novoProjetoId: resultado['projetoId'] as int,
+      incluirRegistos: incluirRegistos,
+    );
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    _loadDados();
+    Toast.mostrar(context, 'Pasta copiada com sucesso!', tipo: ToastTipo.sucesso);
   }
 
   void _loadDados() async {
@@ -75,10 +249,7 @@ class _NosScreenState extends State<NosScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1A237E),
@@ -178,20 +349,13 @@ class _NosScreenState extends State<NosScreen> {
           children: [
             Text(
               widget.pai?.nome ?? widget.projeto.nome,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 18,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
             ),
-            // ─── BREADCRUMB INTELIGENTE ───────────────
             if (caminhoCompleto.length > 1)
               _BreadcrumbWidget(
                 caminho: caminhoCompleto,
                 onTapBreadcrumb: (index) {
-                  int indexOriginal = index;
-                  int popsNecessarios = caminhoCompleto.length - 1 - indexOriginal;
-                  
+                  int popsNecessarios = caminhoCompleto.length - 1 - index;
                   if (popsNecessarios > 0) {
                     int count = 0;
                     Navigator.of(context).popUntil((_) => count++ >= popsNecessarios);
@@ -207,9 +371,7 @@ class _NosScreenState extends State<NosScreen> {
               tooltip: 'Gerir Membros',
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => GerirMembrosScreen(projeto: widget.projeto),
-                ),
+                MaterialPageRoute(builder: (_) => GerirMembrosScreen(projeto: widget.projeto)),
               ),
             ),
         ],
@@ -220,73 +382,49 @@ class _NosScreenState extends State<NosScreen> {
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
               physics: const BouncingScrollPhysics(),
               children: [
-                // ─── BOTÃO PREENCHER FORMULÁRIO ──────────
-                // ─── BOTÃO PREENCHER FORMULÁRIO ──────────
                 if (temCampos && widget.pai != null)
                   _BotaoPreencherFormulario(
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => PreencherTabelaScreen(no: widget.pai!),
-                      ),
+                      MaterialPageRoute(builder: (_) => PreencherTabelaScreen(no: widget.pai!)),
                     ),
                   ),
-
-                // 👇 COLE ESTE NOVO BOTÃO AQUI 👇
-                // ─── BOTÃO VER DADOS (NOVO) ──────────────
                 if (temCampos && widget.pai != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 20),
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Passamos o ID automaticamente para o novo ecrã!
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MostrarDadosScreen(noId: widget.pai!.id!),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MostrarDadosScreen(noId: widget.pai!.id!),
+                        ),
+                      ),
                       icon: const Icon(Icons.table_view),
                       label: const Text('Ver Registos Desta Pasta'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        minimumSize: const Size(double.infinity, 50), // Ocupa a largura toda
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        minimumSize: const Size(double.infinity, 50),
                       ),
                     ),
                   ),
-                // 👆 FIM DO NOVO BOTÃO 👆
-
-                // ─── CONTADOR DE PASTAS ───────────────────
                 if (nos.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12, left: 4),
                     child: Text(
                       '${nos.length} pasta${nos.length != 1 ? 's' : ''}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                     ),
                   ),
-
-                // ─── PASTA VAZIA ──────────────────────────
                 if (nos.isEmpty && !temCampos)
                   _PastaVaziaWidget(isAdmin: widget.perfil == 'admin'),
-
-                // ─── LISTA DE PASTAS ──────────────────────
                 ...nos.asMap().entries.map((entry) {
-                  final index = entry.key;
                   final no = entry.value;
                   return _PastaCard(
                     no: no,
-                    index: index,
+                    index: entry.key,
                     isAdmin: widget.perfil == 'admin',
                     onTap: () => Navigator.push(
                       context,
@@ -300,6 +438,9 @@ class _NosScreenState extends State<NosScreen> {
                       ),
                     ).then((_) => _loadDados()),
                     onDelete: () => _apagarNo(no),
+                    onRenomear: () => _renomearNo(no),
+                    onMover: () => _moverNo(no),
+                    onCopiar: () => _copiarNo(no),
                   );
                 }),
               ],
@@ -338,29 +479,408 @@ class _NosScreenState extends State<NosScreen> {
   }
 }
 
-// ─── WIDGET: BREADCRUMB INTELIGENTE ───────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// NAVEGADOR DE DESTINO — funciona como explorador de ficheiros
+// Permite navegar projeto → raiz → subpastas → ... com breadcrumb e pesquisa
+// ════════════════════════════════════════════════════════════════════════════
+class _NavegadorDestinoCopia extends StatefulWidget {
+  final List<Projeto> projetos;
+  final int projetoInicialId;
+
+  const _NavegadorDestinoCopia({
+    required this.projetos,
+    required this.projetoInicialId,
+  });
+
+  @override
+  State<_NavegadorDestinoCopia> createState() => _NavegadorDestinoCopiaState();
+}
+
+class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
+  late int _projetoAtualId;
+  // Pilha de navegação: vazia = raiz do projeto
+  final List<No> _pilha = [];
+  List<No> _nosAtuais = [];
+  bool _loading = true;
+  final TextEditingController _pesquisaC = TextEditingController();
+  String _pesquisa = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _projetoAtualId = widget.projetoInicialId;
+    _carregarNos();
+  }
+
+  @override
+  void dispose() {
+    _pesquisaC.dispose();
+    super.dispose();
+  }
+
+  Future<void> _carregarNos() async {
+    setState(() => _loading = true);
+    final paiId = _pilha.isEmpty ? null : _pilha.last.id;
+    final nos = await DatabaseHelper.instance.getNos(_projetoAtualId, paiId: paiId);
+    setState(() {
+      _nosAtuais = nos;
+      _loading = false;
+      _pesquisaC.clear();
+      _pesquisa = '';
+    });
+  }
+
+  void _entrarNaPasta(No no) {
+    _pilha.add(no);
+    _carregarNos();
+  }
+
+  void _voltarAtras() {
+    if (_pilha.isNotEmpty) {
+      _pilha.removeLast();
+      _carregarNos();
+    }
+  }
+
+  void _mudarProjeto(int novoId) {
+    setState(() {
+      _projetoAtualId = novoId;
+      _pilha.clear();
+    });
+    _carregarNos();
+  }
+
+  void _navegarParaNivel(int nivelNaPilha) {
+    // Mantém só até ao nível clicado (inclusive)
+    while (_pilha.length > nivelNaPilha + 1) {
+      _pilha.removeLast();
+    }
+    _carregarNos();
+  }
+
+  String get _nomeProjeto =>
+      widget.projetos.firstWhere((p) => p.id == _projetoAtualId).nome;
+
+  List<No> get _nosFiltrados {
+    if (_pesquisa.isEmpty) return _nosAtuais;
+    return _nosAtuais
+        .where((n) => n.nome.toLowerCase().contains(_pesquisa.toLowerCase()))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int? paiIdAtual = _pilha.isEmpty ? null : _pilha.last.id;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 36),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+
+              // ── Cabeçalho com seletor de projeto ──────────────────────────
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF00695C), Color(0xFF00897B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [
+                      Icon(Icons.copy_outlined, color: Colors.white, size: 18),
+                      SizedBox(width: 8),
+                      Text('Destino da Cópia',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+                    ]),
+                    const SizedBox(height: 10),
+                    const Text('Projeto:', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _projetoAtualId,
+                          dropdownColor: const Color(0xFF00695C),
+                          iconEnabledColor: Colors.white,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                          isExpanded: true,
+                          items: widget.projetos
+                              .map((p) => DropdownMenuItem<int>(
+                                    value: p.id!,
+                                    child: Text(p.nome, style: const TextStyle(color: Colors.white)),
+                                  ))
+                              .toList(),
+                          onChanged: (id) { if (id != null) _mudarProjeto(id); },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Breadcrumb de navegação ────────────────────────────────────
+              Container(
+                color: Colors.grey.shade100,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    // Botão voltar
+                    if (_pilha.isNotEmpty) ...[
+                      InkWell(
+                        onTap: _voltarAtras,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00695C).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded,
+                              size: 13, color: Color(0xFF00695C)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    // Caminho (scrollável, mostra sempre o fim)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        reverse: true,
+                        child: Row(
+                          children: [
+                            // Raiz
+                            GestureDetector(
+                              onTap: _pilha.isNotEmpty
+                                  ? () { _pilha.clear(); _carregarNos(); }
+                                  : null,
+                              child: Row(children: [
+                                Icon(Icons.home_rounded,
+                                    size: 15,
+                                    color: _pilha.isEmpty ? const Color(0xFF00695C) : Colors.grey.shade400),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _nomeProjeto,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: _pilha.isEmpty ? FontWeight.bold : FontWeight.normal,
+                                    color: _pilha.isEmpty ? const Color(0xFF00695C) : Colors.grey.shade500,
+                                    decoration: _pilha.isNotEmpty ? TextDecoration.underline : null,
+                                    decorationColor: Colors.grey.shade400,
+                                  ),
+                                ),
+                              ]),
+                            ),
+                            // Cada nível da pilha
+                            ..._pilha.asMap().entries.map((e) {
+                              final isLast = e.key == _pilha.length - 1;
+                              return Row(children: [
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 3),
+                                  child: Icon(Icons.chevron_right, size: 13, color: Colors.grey),
+                                ),
+                                GestureDetector(
+                                  onTap: isLast ? null : () => _navegarParaNivel(e.key),
+                                  child: Text(
+                                    e.value.nome,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
+                                      color: isLast ? const Color(0xFF00695C) : Colors.grey.shade500,
+                                      decoration: !isLast ? TextDecoration.underline : null,
+                                      decorationColor: Colors.grey.shade400,
+                                    ),
+                                  ),
+                                ),
+                              ]);
+                            }),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Barra de pesquisa ─────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+                child: TextField(
+                  controller: _pesquisaC,
+                  onChanged: (v) => setState(() => _pesquisa = v),
+                  decoration: InputDecoration(
+                    hintText: 'Pesquisar nesta pasta...',
+                    prefixIcon: const Icon(Icons.search, size: 19),
+                    suffixIcon: _pesquisa.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 17),
+                            onPressed: () { _pesquisaC.clear(); setState(() => _pesquisa = ''); },
+                          )
+                        : null,
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  ),
+                ),
+              ),
+
+              // ── Lista de subpastas ── COM FLEX PARA OCUPAR ESPAÇO DISPONÍVEL ──
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _nosFiltrados.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.folder_open_rounded, size: 44, color: Colors.grey.shade300),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _pesquisa.isNotEmpty ? 'Nenhuma pasta encontrada' : 'Sem subpastas aqui',
+                                  style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                                ),
+                                if (_pesquisa.isEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text('Podes copiar para esta localização',
+                                      style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                                ],
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            itemCount: _nosFiltrados.length,
+                            itemBuilder: (context, i) {
+                              final n = _nosFiltrados[i];
+                              return ListTile(
+                                dense: true,
+                                leading: Container(
+                                  width: 36, height: 36,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF00695C).withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(9),
+                                  ),
+                                  child: const Icon(Icons.folder_rounded, color: Color(0xFF00695C), size: 20),
+                                ),
+                                title: Text(n.nome,
+                                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                                // Botão "entrar" à direita
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 15, color: Colors.grey),
+                                  tooltip: 'Entrar na pasta',
+                                  onPressed: () => _entrarNaPasta(n),
+                                  splashRadius: 18,
+                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                              );
+                            },
+                          ),
+              ),
+
+              const Divider(height: 1),
+
+              // ── Rodapé: destino atual + botão Copiar Aqui ─────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Indicador do destino selecionado
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00695C).withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF00695C).withOpacity(0.25)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.my_location_rounded, size: 15, color: Color(0xFF00695C)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _pilha.isEmpty
+                                  ? 'Raiz de "$_nomeProjeto"'
+                                  : '$_nomeProjeto › ${_pilha.map((n) => n.nome).join(' › ')}',
+                              style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF00695C), fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancelar'),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00695C),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 17),
+                            label: const Text('Copiar Aqui',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            onPressed: () => Navigator.pop(context, {
+                              'projetoId': _projetoAtualId,
+                              'paiId': paiIdAtual,
+                            }),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─── WIDGET: BREADCRUMB ───────────────────────────────────
 class _BreadcrumbWidget extends StatelessWidget {
   final List<String> caminho;
   final void Function(int) onTapBreadcrumb;
-  
-  const _BreadcrumbWidget({
-    Key? key,
-    required this.caminho, 
-    required this.onTapBreadcrumb,
-  }) : super(key: key);
+
+  const _BreadcrumbWidget({Key? key, required this.caminho, required this.onTapBreadcrumb})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     List<Map<String, dynamic>> itens = [];
-
     if (caminho.length <= 3) {
       for (int i = 0; i < caminho.length; i++) {
         itens.add({'texto': caminho[i], 'indexOriginal': i});
       }
     } else {
-      // Mostra: primeiro › ... › penúltimo › último
       itens.add({'texto': caminho.first, 'indexOriginal': 0});
-      itens.add({'texto': '...', 'indexOriginal': -1}); 
+      itens.add({'texto': '...', 'indexOriginal': -1});
       itens.add({'texto': caminho[caminho.length - 2], 'indexOriginal': caminho.length - 2});
       itens.add({'texto': caminho.last, 'indexOriginal': caminho.length - 1});
     }
@@ -372,14 +892,13 @@ class _BreadcrumbWidget extends StatelessWidget {
           final isLast = e.key == itens.length - 1;
           final isEllipsis = e.value['texto'] == '...';
           final int originalIndex = e.value['indexOriginal'] as int;
-
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               GestureDetector(
                 onTap: (isLast || isEllipsis) ? null : () => onTapBreadcrumb(originalIndex),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4), 
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Text(
                     e.value['texto'] as String,
                     style: TextStyle(
@@ -387,9 +906,7 @@ class _BreadcrumbWidget extends StatelessWidget {
                       color: isLast ? Colors.white : Colors.white60,
                       fontWeight: isLast ? FontWeight.w600 : FontWeight.normal,
                       fontStyle: isEllipsis ? FontStyle.italic : FontStyle.normal,
-                      decoration: (!isLast && !isEllipsis) 
-                          ? TextDecoration.underline 
-                          : TextDecoration.none,
+                      decoration: (!isLast && !isEllipsis) ? TextDecoration.underline : TextDecoration.none,
                       decorationColor: Colors.white60,
                     ),
                   ),
@@ -432,11 +949,7 @@ class _BotaoPreencherFormulario extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFF6F00).withOpacity(0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 5),
-                ),
+                BoxShadow(color: const Color(0xFFFF6F00).withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 5)),
               ],
             ),
             padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
@@ -444,10 +957,7 @@ class _BotaoPreencherFormulario extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
                   child: const Icon(Icons.edit_note, color: Colors.white, size: 28),
                 ),
                 const SizedBox(width: 16),
@@ -455,19 +965,11 @@ class _BotaoPreencherFormulario extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Preencher Formulário',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text('Preencher Formulário',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                       SizedBox(height: 2),
-                      Text(
-                        'Submeter novos dados para esta pasta',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
+                      Text('Submeter novos dados para esta pasta',
+                          style: TextStyle(color: Colors.white70, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -488,24 +990,20 @@ class _PastaCard extends StatelessWidget {
   final bool isAdmin;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onRenomear;
+  final VoidCallback onMover;
+  final VoidCallback onCopiar;
 
   const _PastaCard({
-    required this.no,
-    required this.index,
-    required this.isAdmin,
-    required this.onTap,
-    required this.onDelete,
+    required this.no, required this.index, required this.isAdmin,
+    required this.onTap, required this.onDelete, required this.onRenomear,
+    required this.onMover, required this.onCopiar,
   });
 
-  // Cores alternadas para dar vida à lista
   Color _corPasta(int index) {
     final cores = [
-      const Color(0xFF1A237E),
-      const Color(0xFF1565C0),
-      const Color(0xFF0277BD),
-      const Color(0xFF00695C),
-      const Color(0xFF2E7D32),
-      const Color(0xFF4527A0),
+      const Color(0xFF1A237E), const Color(0xFF1565C0), const Color(0xFF0277BD),
+      const Color(0xFF00695C), const Color(0xFF2E7D32), const Color(0xFF4527A0),
     ];
     return cores[index % cores.length];
   }
@@ -527,36 +1025,44 @@ class _PastaCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                // Ícone colorido
                 Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: cor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                  width: 48, height: 48,
+                  decoration: BoxDecoration(color: cor.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
                   child: Icon(Icons.folder_rounded, color: cor, size: 28),
                 ),
                 const SizedBox(width: 14),
-                // Nome
-                Expanded(
-                  child: Text(
-                    no.nome,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                ),
-                // Botão apagar (só admin)
+                Expanded(child: Text(no.nome,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Color(0xFF1A1A2E)))),
                 if (isAdmin)
-                  IconButton(
-                    icon: Icon(Icons.delete_outline, color: Colors.red.shade300, size: 22),
-                    onPressed: onDelete,
-                    splashRadius: 20,
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert, color: Colors.grey.shade400, size: 20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    onSelected: (valor) {
+                      switch (valor) {
+                        case 'renomear': onRenomear(); break;
+                        case 'mover': onMover(); break;
+                        case 'copiar': onCopiar(); break;
+                        case 'apagar': onDelete(); break;
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(value: 'renomear', child: Row(children: [
+                        Icon(Icons.edit_outlined, color: Color(0xFF1A237E), size: 20), SizedBox(width: 10), Text('Renomear'),
+                      ])),
+                      const PopupMenuItem(value: 'mover', child: Row(children: [
+                        Icon(Icons.drive_file_move_outlined, color: Color(0xFF0277BD), size: 20), SizedBox(width: 10), Text('Mover para...'),
+                      ])),
+                      const PopupMenuItem(value: 'copiar', child: Row(children: [
+                        Icon(Icons.copy_outlined, color: Color(0xFF00695C), size: 20), SizedBox(width: 10), Text('Copiar para...'),
+                      ])),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(value: 'apagar', child: Row(children: [
+                        Icon(Icons.delete_outline, color: Colors.red.shade400, size: 20),
+                        const SizedBox(width: 10),
+                        Text('Apagar', style: TextStyle(color: Colors.red.shade400)),
+                      ])),
+                    ],
                   ),
-                // Seta
                 Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 24),
               ],
             ),
@@ -582,28 +1088,17 @@ class _PastaVaziaWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20),
-                ],
+                color: Colors.white, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20)],
               ),
               child: Icon(Icons.folder_open_rounded, size: 64, color: Colors.grey.shade300),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Pasta vazia',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade700,
-              ),
-            ),
+            Text('Pasta vazia',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
             const SizedBox(height: 8),
             Text(
-              isAdmin
-                  ? 'Clica em 📁 para criar subpastas\nou em 📋 para adicionar campos.'
-                  : 'Ainda não há conteúdo aqui.',
+              isAdmin ? 'Clica em 📁 para criar subpastas\nou em 📋 para adicionar campos.' : 'Ainda não há conteúdo aqui.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade500, fontSize: 14, height: 1.5),
             ),
@@ -627,10 +1122,7 @@ class _FabLabel extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.black54,
-            borderRadius: BorderRadius.circular(8),
-          ),
+          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
           child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
         ),
         const SizedBox(width: 8),
@@ -664,10 +1156,7 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
 
   void _loadCampos() async {
     final data = await DatabaseHelper.instance.getCampos(widget.no.id!);
-    setState(() {
-      _camposExistentes = data;
-      _loading = false;
-    });
+    setState(() { _camposExistentes = data; _loading = false; });
   }
 
   void _adicionarCampo() {
@@ -699,13 +1188,10 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
                 const Text('Tipo de Campo:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 8, runSpacing: 8,
                   children: [
-                    {'tipo': 'texto', 'icon': '📝'},
-                    {'tipo': 'foto', 'icon': '📷'},
-                    {'tipo': 'selecao', 'icon': '📋'},
-                    {'tipo': 'numero', 'icon': '🔢'},
+                    {'tipo': 'texto', 'icon': '📝'}, {'tipo': 'foto', 'icon': '📷'},
+                    {'tipo': 'selecao', 'icon': '📋'}, {'tipo': 'numero', 'icon': '🔢'},
                     {'tipo': 'data', 'icon': '📅'},
                   ].map((item) {
                     final tipo = item['tipo']!;
@@ -717,18 +1203,14 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
                         decoration: BoxDecoration(
                           color: selected ? const Color(0xFF1A237E) : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: selected ? const Color(0xFF1A237E) : Colors.grey.shade300,
-                          ),
+                          border: Border.all(color: selected ? const Color(0xFF1A237E) : Colors.grey.shade300),
                         ),
-                        child: Text(
-                          '${item['icon']} $tipo',
-                          style: TextStyle(
-                            color: selected ? Colors.white : Colors.black87,
-                            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                            fontSize: 13,
-                          ),
-                        ),
+                        child: Text('${item['icon']} $tipo',
+                            style: TextStyle(
+                              color: selected ? Colors.white : Colors.black87,
+                              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 13,
+                            )),
                       ),
                     );
                   }).toList(),
@@ -759,10 +1241,7 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1A237E),
@@ -790,23 +1269,18 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
   }
 
   void _guardar() async {
-    if (_camposNovos.isEmpty) {
-      Navigator.pop(context);
-      return;
-    }
+    if (_camposNovos.isEmpty) { Navigator.pop(context); return; }
     setState(() => _saving = true);
     for (final campo in _camposNovos) {
       await DatabaseHelper.instance.criarCampo({...campo, 'no_id': widget.no.id});
     }
     setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ Campos guardados com sucesso!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('✅ Campos guardados com sucesso!'),
+      backgroundColor: Colors.green,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+    ));
     Navigator.pop(context);
   }
 
@@ -829,27 +1303,24 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            gradient: LinearGradient(colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight),
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Campos — ${widget.no.nome}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Campos — ${widget.no.nome}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             const Text('Gerir campos do formulário', style: TextStyle(color: Colors.white60, fontSize: 12)),
           ],
         ),
         actions: [
           if (_saving)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
-            )
+            const Padding(padding: EdgeInsets.all(16),
+                child: SizedBox(width: 20, height: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
           else if (_camposNovos.isNotEmpty)
             TextButton.icon(
               onPressed: _guardar,
@@ -868,23 +1339,16 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
                   _SectionHeader(title: 'Campos Existentes', color: Colors.grey.shade600),
                   const SizedBox(height: 8),
                   ..._camposExistentes.map((c) => _CampoCard(
-                        icone: _iconeCampo(c.tipoCampo),
-                        nome: c.nomeCampo,
-                        tipo: c.tipoCampo,
-                        isNovo: false,
-                      )),
+                      icone: _iconeCampo(c.tipoCampo), nome: c.nomeCampo, tipo: c.tipoCampo, isNovo: false)),
                   const SizedBox(height: 16),
                 ],
                 if (_camposNovos.isNotEmpty) ...[
                   _SectionHeader(title: 'Novos Campos (por guardar)', color: Colors.orange.shade700),
                   const SizedBox(height: 8),
                   ..._camposNovos.asMap().entries.map((e) => _CampoCard(
-                        icone: _iconeCampo(e.value['tipo_campo']),
-                        nome: e.value['nome_campo'],
-                        tipo: e.value['tipo_campo'],
-                        isNovo: true,
-                        onDelete: () => setState(() => _camposNovos.removeAt(e.key)),
-                      )),
+                      icone: _iconeCampo(e.value['tipo_campo']), nome: e.value['nome_campo'],
+                      tipo: e.value['tipo_campo'], isNovo: true,
+                      onDelete: () => setState(() => _camposNovos.removeAt(e.key)))),
                 ],
                 if (_camposExistentes.isEmpty && _camposNovos.isEmpty)
                   const _PastaVaziaWidget(isAdmin: true),
@@ -910,7 +1374,8 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 4, height: 16, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+        Container(width: 4, height: 16,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 8),
         Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 13)),
       ],
@@ -926,13 +1391,8 @@ class _CampoCard extends StatelessWidget {
   final bool isNovo;
   final VoidCallback? onDelete;
 
-  const _CampoCard({
-    required this.icone,
-    required this.nome,
-    required this.tipo,
-    required this.isNovo,
-    this.onDelete,
-  });
+  const _CampoCard({required this.icone, required this.nome, required this.tipo,
+      required this.isNovo, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -950,8 +1410,7 @@ class _CampoCard extends StatelessWidget {
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             leading: Container(
-              width: 44,
-              height: 44,
+              width: 44, height: 44,
               decoration: BoxDecoration(
                 color: isNovo ? Colors.orange.shade50 : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(12),
@@ -959,13 +1418,11 @@ class _CampoCard extends StatelessWidget {
               child: Center(child: Text(icone, style: const TextStyle(fontSize: 22))),
             ),
             title: Text(nome, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-            subtitle: Text(tipo.toUpperCase(), style: TextStyle(fontSize: 11, color: Colors.grey.shade500, letterSpacing: 0.5)),
+            subtitle: Text(tipo.toUpperCase(),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500, letterSpacing: 0.5)),
             trailing: onDelete != null
-                ? IconButton(
-                    icon: Icon(Icons.delete_outline, color: Colors.red.shade300),
-                    onPressed: onDelete,
-                    splashRadius: 20,
-                  )
+                ? IconButton(icon: Icon(Icons.delete_outline, color: Colors.red.shade300),
+                    onPressed: onDelete, splashRadius: 20)
                 : null,
           ),
         ),
