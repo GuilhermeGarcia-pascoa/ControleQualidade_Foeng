@@ -9,13 +9,13 @@ import 'gerir_membros_screen.dart';
 
 // ─── PALETA ESCURA ────────────────────────────────────────
 class _C {
-  static const bg         = Color(0xFF0D1117); // fundo principal
-  static const surface    = Color(0xFF161B22); // cards
-  static const surfaceAlt = Color(0xFF1C2330); // hover / alt
-  static const border     = Color(0xFF30363D); // bordas subtis
-  static const accent     = Color(0xFF00C2A8); // verde-azulado
-  static const accentDim  = Color(0x2200C2A8); // accent translúcido
-  static const primary    = Color(0xFF58A6FF); // azul links/icons
+  static const bg         = Color(0xFF0D1117);
+  static const surface    = Color(0xFF161B22);
+  static const surfaceAlt = Color(0xFF1C2330);
+  static const border     = Color(0xFF30363D);
+  static const accent     = Color(0xFF00C2A8);
+  static const accentDim  = Color(0x2200C2A8);
+  static const primary    = Color(0xFF58A6FF);
   static const primaryDim = Color(0x1558A6FF);
   static const textPri    = Color(0xFFE6EDF3);
   static const textSec    = Color(0xFF8B949E);
@@ -36,8 +36,11 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin {
   List<Projeto> projetos = [];
+  List<Projeto> _projetosFiltrados = [];
   bool _loading = true;
   late AnimationController _fabAnim;
+  final TextEditingController _searchCtrl = TextEditingController();
+  bool _searchAtivo = false;
 
   @override
   void initState() {
@@ -46,13 +49,28 @@ class _DashboardScreenState extends State<DashboardScreen>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
+    _searchCtrl.addListener(_onSearch);
     _loadProjetos();
   }
 
   @override
   void dispose() {
     _fabAnim.dispose();
+    _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _onSearch() {
+    final texto = _searchCtrl.text.trim().toLowerCase();
+    setState(() {
+      _projetosFiltrados = texto.isEmpty
+          ? List.from(projetos)
+          : projetos
+              .where((p) =>
+                  p.nome.toLowerCase().contains(texto) ||
+                  p.descricao.toLowerCase().contains(texto))
+              .toList();
+    });
   }
 
   void _loadProjetos() async {
@@ -65,9 +83,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
     setState(() {
       projetos = data;
+      _projetosFiltrados = List.from(data);
       _loading = false;
     });
     _fabAnim.forward(from: 0);
+    // reaplicar filtro se havia pesquisa ativa
+    if (_searchCtrl.text.isNotEmpty) _onSearch();
   }
 
   // ─── DIALOGS ────────────────────────────────────────────
@@ -448,6 +469,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     final isAdmin = widget.perfil == 'admin';
+    final temFiltro = _searchCtrl.text.isNotEmpty;
+    final listaVisivel = _projetosFiltrados;
 
     return Scaffold(
       backgroundColor: _C.bg,
@@ -466,12 +489,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               child: Container(height: 1, color: _C.border),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding:
-                  const EdgeInsets.only(left: 20, bottom: 16),
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
               title: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Logo mark
                   Container(
                     width: 30,
                     height: 30,
@@ -514,16 +535,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ],
               ),
               background: Container(
-                decoration: BoxDecoration(
-                  color: _C.surface,
-                ),
+                decoration: const BoxDecoration(color: _C.surface),
                 child: Stack(
                   children: [
-                    // Decorative grid lines
                     Positioned.fill(
                       child: CustomPaint(painter: _GridPainter()),
                     ),
-                    // Accent glow top-right
                     Positioned(
                       top: -30,
                       right: -30,
@@ -544,6 +561,24 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
             actions: [
+              // ── Botão de pesquisa
+              IconButton(
+                icon: Icon(
+                  _searchAtivo ? Icons.search_off_rounded : Icons.search_rounded,
+                  color: _searchAtivo ? _C.accent : _C.textSec,
+                  size: 20,
+                ),
+                tooltip: _searchAtivo ? 'Fechar pesquisa' : 'Pesquisar',
+                onPressed: () {
+                  setState(() {
+                    _searchAtivo = !_searchAtivo;
+                    if (!_searchAtivo) {
+                      _searchCtrl.clear();
+                      _projetosFiltrados = List.from(projetos);
+                    }
+                  });
+                },
+              ),
               IconButton(
                 icon: Icon(Icons.logout_rounded, color: _C.textSec, size: 20),
                 tooltip: 'Sair',
@@ -551,8 +586,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   await Session.logout();
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(
-                        builder: (_) => const LoginScreen()),
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
                   );
                 },
               ),
@@ -560,18 +594,78 @@ class _DashboardScreenState extends State<DashboardScreen>
             ],
           ),
 
-          // ── Contador de projetos
+          // ── Barra de pesquisa (aparece quando ativa)
+          SliverToBoxAdapter(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: _searchAtivo
+                  ? Container(
+                      color: _C.surface,
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: _C.surfaceAlt,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _searchCtrl.text.isNotEmpty
+                                ? _C.accent.withOpacity(0.5)
+                                : _C.border,
+                          ),
+                        ),
+                        child: Row(children: [
+                          const SizedBox(width: 12),
+                          Icon(Icons.search_rounded, color: _C.textSec, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchCtrl,
+                              autofocus: true,
+                              style: TextStyle(color: _C.textPri, fontSize: 14),
+                              cursorColor: _C.accent,
+                              decoration: InputDecoration(
+                                hintText: 'Pesquisar projetos...',
+                                hintStyle: TextStyle(color: _C.textMuted, fontSize: 13),
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          if (_searchCtrl.text.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                _searchCtrl.clear();
+                                setState(() {
+                                  _projetosFiltrados = List.from(projetos);
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child: Icon(Icons.close_rounded,
+                                    color: _C.textSec, size: 16),
+                              ),
+                            ),
+                        ]),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+
+          // ── Contador
           if (!_loading)
             SliverToBoxAdapter(
               child: Padding(
-                padding:
-                    const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                 child: Row(
                   children: [
                     Text(
-                      '${projetos.length} projeto${projetos.length != 1 ? 's' : ''}',
+                      temFiltro
+                          ? '${listaVisivel.length} de ${projetos.length} projetos'
+                          : '${projetos.length} projeto${projetos.length != 1 ? 's' : ''}',
                       style: TextStyle(
-                        color: _C.textSec,
+                        color: temFiltro ? _C.accent : _C.textSec,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -620,14 +714,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                     const SizedBox(height: 14),
                     Text('A carregar projetos...',
-                        style: TextStyle(
-                            color: _C.textSec, fontSize: 13)),
+                        style: TextStyle(color: _C.textSec, fontSize: 13)),
                   ],
                 ),
               ),
             )
 
-          // ── Empty state
+          // ── Empty state — sem projetos de todo
           else if (projetos.isEmpty)
             SliverFillRemaining(
               child: Center(
@@ -659,10 +752,42 @@ class _DashboardScreenState extends State<DashboardScreen>
                       isAdmin
                           ? 'Clica no + para criar o primeiro projeto.'
                           : 'Ainda não foste adicionado a nenhum projeto.',
-                      style: TextStyle(
-                          color: _C.textSec,
-                          fontSize: 13),
+                      style: TextStyle(color: _C.textSec, fontSize: 13),
                       textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+
+          // ── Empty state — pesquisa sem resultados
+          else if (listaVisivel.isEmpty)
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: _C.surfaceAlt,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _C.border),
+                      ),
+                      child: Icon(Icons.search_off_rounded,
+                          size: 32, color: _C.textMuted),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Sem resultados',
+                        style: TextStyle(
+                            color: _C.textPri,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Nenhum projeto com "${_searchCtrl.text}"',
+                      style: TextStyle(color: _C.textSec, fontSize: 13),
                     ),
                   ],
                 ),
@@ -672,31 +797,29 @@ class _DashboardScreenState extends State<DashboardScreen>
           // ── Lista de projetos
           else
             SliverPadding(
-              padding:
-                  const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final projeto = projetos[index];
+                    final projeto = listaVisivel[index];
                     return _ProjetoCard(
                       projeto: projeto,
                       isAdmin: isAdmin,
                       index: index,
+                      searchQuery: _searchCtrl.text.trim(),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => NosScreen(
-                              projeto: projeto,
-                              perfil: widget.perfil),
+                              projeto: projeto, perfil: widget.perfil),
                         ),
                       ).then((_) => _loadProjetos()),
                       onRenomear: () => _renomearProjeto(projeto),
                       onCopiar: () => _copiarProjeto(projeto),
-                      onApagar: () =>
-                          _confirmarApagarProjeto(projeto),
+                      onApagar: () => _confirmarApagarProjeto(projeto),
                     );
                   },
-                  childCount: projetos.length,
+                  childCount: listaVisivel.length,
                 ),
               ),
             ),
@@ -716,8 +839,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 icon: const Icon(Icons.add_rounded, size: 20),
                 label: const Text('Novo Projeto',
                     style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2)),
+                        fontWeight: FontWeight.w700, letterSpacing: 0.2)),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
@@ -733,6 +855,7 @@ class _ProjetoCard extends StatefulWidget {
   final Projeto projeto;
   final bool isAdmin;
   final int index;
+  final String searchQuery;
   final VoidCallback onTap;
   final VoidCallback onRenomear;
   final VoidCallback onCopiar;
@@ -742,6 +865,7 @@ class _ProjetoCard extends StatefulWidget {
     required this.projeto,
     required this.isAdmin,
     required this.index,
+    required this.searchQuery,
     required this.onTap,
     required this.onRenomear,
     required this.onCopiar,
@@ -759,7 +883,6 @@ class _ProjetoCardState extends State<_ProjetoCard>
   late Animation<Offset> _slideAnim;
   bool _hovered = false;
 
-  // Cor do avatar baseada no índice
   static const _avatarGradients = [
     [Color(0xFF00C2A8), Color(0xFF0097A7)],
     [Color(0xFF58A6FF), Color(0xFF1565C0)],
@@ -790,6 +913,45 @@ class _ProjetoCardState extends State<_ProjetoCard>
   void dispose() {
     _ctrl.dispose();
     super.dispose();
+  }
+
+  // Destaca o texto que coincide com a pesquisa
+  Widget _textoDestacado(String texto, double fontSize, Color corBase) {
+    final query = widget.searchQuery.toLowerCase();
+    if (query.isEmpty) {
+      return Text(texto,
+          style: TextStyle(
+              color: corBase,
+              fontSize: fontSize,
+              fontWeight: fontSize > 13 ? FontWeight.w600 : FontWeight.w400));
+    }
+    final lower = texto.toLowerCase();
+    final idx = lower.indexOf(query);
+    if (idx == -1) {
+      return Text(texto,
+          style: TextStyle(color: corBase, fontSize: fontSize));
+    }
+    return RichText(
+      text: TextSpan(children: [
+        if (idx > 0)
+          TextSpan(
+              text: texto.substring(0, idx),
+              style: TextStyle(color: corBase, fontSize: fontSize)),
+        TextSpan(
+          text: texto.substring(idx, idx + query.length),
+          style: TextStyle(
+            color: _C.accent,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w700,
+            backgroundColor: _C.accent.withOpacity(0.12),
+          ),
+        ),
+        if (idx + query.length < texto.length)
+          TextSpan(
+              text: texto.substring(idx + query.length),
+              style: TextStyle(color: corBase, fontSize: fontSize)),
+      ]),
+    );
   }
 
   @override
@@ -864,29 +1026,17 @@ class _ProjetoCardState extends State<_ProjetoCard>
                         ),
                         const SizedBox(width: 14),
 
-                        // Info
+                        // Info com texto destacado
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                widget.projeto.nome,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  color: _C.textPri,
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
+                              _textoDestacado(
+                                  widget.projeto.nome, 15, _C.textPri),
                               if (widget.projeto.descricao.isNotEmpty) ...[
                                 const SizedBox(height: 3),
-                                Text(
-                                  widget.projeto.descricao,
-                                  style: TextStyle(
-                                      color: _C.textSec, fontSize: 12),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                _textoDestacado(
+                                    widget.projeto.descricao, 12, _C.textSec),
                               ],
                             ],
                           ),
@@ -913,12 +1063,14 @@ class _ProjetoCardState extends State<_ProjetoCard>
                                 case 'apagar':
                                   widget.onApagar();
                                   break;
-                               case 'membros':
-  Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => GerirMembrosScreen(projeto: widget.projeto)),
-  );
-  break;
+                                case 'membros':
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => GerirMembrosScreen(
+                                            projeto: widget.projeto)),
+                                  );
+                                  break;
                               }
                             },
                             itemBuilder: (_) => [
@@ -930,18 +1082,18 @@ class _ProjetoCardState extends State<_ProjetoCard>
                                   const SizedBox(width: 10),
                                   Text('Renomear',
                                       style: TextStyle(
-                                          color: _C.textPri,
-                                          fontSize: 14)),
+                                          color: _C.textPri, fontSize: 14)),
                                 ]),
                               ),
                               const PopupMenuItem(
-  value: 'membros',
-  child: Row(children: [
-    Icon(Icons.group_outlined, color: Color(0xFF4527A0), size: 20),
-    SizedBox(width: 10),
-    Text('Gerir Membros'),
-  ]),
-),
+                                value: 'membros',
+                                child: Row(children: [
+                                  Icon(Icons.group_outlined,
+                                      color: Color(0xFF4527A0), size: 20),
+                                  SizedBox(width: 10),
+                                  Text('Gerir Membros'),
+                                ]),
+                              ),
                               PopupMenuItem(
                                 value: 'copiar',
                                 child: Row(children: [
@@ -950,8 +1102,7 @@ class _ProjetoCardState extends State<_ProjetoCard>
                                   const SizedBox(width: 10),
                                   Text('Copiar Projeto',
                                       style: TextStyle(
-                                          color: _C.textPri,
-                                          fontSize: 14)),
+                                          color: _C.textPri, fontSize: 14)),
                                 ]),
                               ),
                               const PopupMenuDivider(),
@@ -963,8 +1114,7 @@ class _ProjetoCardState extends State<_ProjetoCard>
                                   const SizedBox(width: 10),
                                   Text('Apagar',
                                       style: TextStyle(
-                                          color: _C.danger,
-                                          fontSize: 14)),
+                                          color: _C.danger, fontSize: 14)),
                                 ]),
                               ),
                             ],
