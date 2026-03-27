@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
-import 'dashboard_screen.dart'; // Importante para aceder ao AppTheme
+import '../theme/app_theme.dart';
 
 class MostrarDadosScreen extends StatefulWidget {
   final int noId;

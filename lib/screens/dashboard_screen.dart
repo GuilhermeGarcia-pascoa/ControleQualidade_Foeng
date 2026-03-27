@@ -2,23 +2,18 @@ import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/models.dart';
 import 'nos_screen.dart';
-import '../utils/session.dart';
-import 'login_screen.dart';
 import '../utils/toast.dart';
 import 'gerir_membros_screen.dart';
- 
-// Mantendo a classe de tema conforme solicitado
-class AppTheme {
-  static final ValueNotifier<ThemeMode> themeMode = ValueNotifier(ThemeMode.light);
-}
- 
+import '../theme/app_theme.dart'; // <--- Importa o ficheiro central do tema
+
 class DashboardScreen extends StatefulWidget {
   final String perfil;
   const DashboardScreen({Key? key, required this.perfil}) : super(key: key);
- 
+
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
+// ... resto do ficheiro igual
  
 class _DashboardScreenState extends State<DashboardScreen> {
   List<Projeto> projetos = [];
@@ -346,23 +341,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             accountName: Text(widget.perfil.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
             accountEmail: const Text("Controle de Qualidade"),
           ),
-          ListTile(
-            leading: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-            title: Text(isDark ? "Modo Claro" : "Modo Escuro"),
-            onTap: () {
-              AppTheme.themeMode.value = isDark ? ThemeMode.light : ThemeMode.dark;
-            },
-          ),
-          const Spacer(),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text("Sair da Conta", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            onTap: () async {
-              await Session.logout();
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-            },
-          ),
+ListTile(
+  leading: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+  title: Text(isDark ? "Modo Claro" : "Modo Escuro"),
+  onTap: () {
+    // É esta linha que faz a magia de alterar e guardar ao mesmo tempo!
+    AppTheme.changeTheme(!isDark); 
+  },
+),
           const SizedBox(height: 16),
         ],
       ),

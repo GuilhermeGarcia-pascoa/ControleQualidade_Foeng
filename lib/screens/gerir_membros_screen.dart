@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../database/database_helper.dart';
-import 'dashboard_screen.dart'; // Importado para aceder ao AppTheme
+import '../theme/app_theme.dart';
 
 class GerirMembrosScreen extends StatefulWidget {
   final Projeto projeto;

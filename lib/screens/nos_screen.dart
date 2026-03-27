@@ -6,7 +6,7 @@ import 'gerir_membros_screen.dart';
 import 'mostrar_dados_screen.dart';
 import '../utils/toast.dart';
 import 'gerir_acesso_no_screen.dart';
-import 'dashboard_screen.dart'; // Importante para aceder ao AppTheme
+import '../theme/app_theme.dart';
 
 class NosScreen extends StatefulWidget {
   final Projeto projeto;

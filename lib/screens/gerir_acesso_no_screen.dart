@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../database/database_helper.dart';
-import 'dashboard_screen.dart'; // Importante para aceder ao AppTheme
+import '../theme/app_theme.dart';
 
 class GerirAcessoNoScreen extends StatefulWidget {
   final No no;
