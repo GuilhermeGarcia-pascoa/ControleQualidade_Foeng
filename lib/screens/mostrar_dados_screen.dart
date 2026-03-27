@@ -161,43 +161,71 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
   }
 
   void _verImagemFullscreen(String url) {
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(16),
-        child: Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+  showDialog(
+    context: context,
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(16),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
               child: Image.network(
                 url,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.broken_image_rounded, color: _textMut, size: 48),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
+                filterQuality: FilterQuality.high,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 200,
+                  height: 200,
+                  color: _surface,
+                  child: const Center(
+                    child: Icon(Icons.broken_image_rounded, color: _textMut, size: 48),
                   ),
-                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
                 ),
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : Container(
+                        width: 200,
+                        height: 200,
+                        color: _surface,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: progress.expectedTotalBytes != null
+                                ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                                : null,
+                            color: _accent,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      ),
               ),
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            top: -12,
+            right: -12,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _border),
+                ),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
+              ),
+            ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ─────────────────────────────────────────────────────────
 
