@@ -3,7 +3,7 @@ import '../models/models.dart';
 import '../database/database_helper.dart';
 import '../widgets/campo_widget.dart';
 import '../utils/toast.dart';
-import 'dashboard_screen.dart'; // Importante para aceder ao AppTheme
+import 'dashboard_screen.dart'; 
 
 class PreencherTabelaScreen extends StatefulWidget {
   final No no;
@@ -38,34 +38,16 @@ class _PreencherTabelaScreenState extends State<PreencherTabelaScreen> {
     }
   }
 
-  // Progresso de preenchimento
-  int get _camposPreenchidos =>
-      campos.where((c) => dadosPreenchidos[c.nomeCampo] != null &&
-          dadosPreenchidos[c.nomeCampo].toString().isNotEmpty).length;
-
-  double get _progresso =>
-      campos.isEmpty ? 0 : _camposPreenchidos / campos.length;
-
-  int get _obrigatoriosPorPreencher => campos
-      .where((c) =>
-          c.obrigatorio == 1 &&
-          (dadosPreenchidos[c.nomeCampo] == null ||
-              dadosPreenchidos[c.nomeCampo].toString().isEmpty))
-      .length;
-
   void _salvarRegisto() async {
     if (dadosPreenchidos.isEmpty) {
-      Toast.mostrar(context, 'Preencha pelo menos um campo antes de submeter!',
-          tipo: ToastTipo.aviso);
+      Toast.mostrar(context, 'Preencha pelo menos um campo antes de submeter!', tipo: ToastTipo.aviso);
       return;
     }
 
     for (final campo in campos) {
       final valor = dadosPreenchidos[campo.nomeCampo];
-      if (campo.obrigatorio == 1 &&
-          (valor == null || valor.toString().isEmpty)) {
-        Toast.mostrar(context, 'O campo "${campo.nomeCampo}" é obrigatório!',
-            tipo: ToastTipo.erro);
+      if (campo.obrigatorio == 1 && (valor == null || valor.toString().isEmpty)) {
+        Toast.mostrar(context, 'O campo "${campo.nomeCampo}" é obrigatório!', tipo: ToastTipo.erro);
         return;
       }
     }
@@ -81,13 +63,10 @@ class _PreencherTabelaScreenState extends State<PreencherTabelaScreen> {
       if (!mounted) return;
 
       if (sucesso) {
-        Toast.mostrar(context, 'Registo guardado com sucesso!',
-            tipo: ToastTipo.sucesso);
+        Toast.mostrar(context, 'Registo guardado com sucesso!', tipo: ToastTipo.sucesso);
         Navigator.pop(context);
       } else {
-        Toast.mostrar(context,
-            'Erro ao guardar registo. Verifique a ligação ao servidor.',
-            tipo: ToastTipo.erro);
+        Toast.mostrar(context, 'Erro ao guardar registo.', tipo: ToastTipo.erro);
       }
     } catch (e) {
       Toast.mostrar(context, 'Erro: ${e.toString()}', tipo: ToastTipo.erro);
@@ -98,50 +77,74 @@ class _PreencherTabelaScreenState extends State<PreencherTabelaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      // Fundo ligeiramente diferente para os cartões destacarem-se no modo claro
+      backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF5F7FA),
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.no.nome),
-            const Text(
-              'Preenchimento de dados',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            Text(widget.no.nome, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(
+              'Preenchimento de formulário',
+              style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6)),
             ),
           ],
         ),
         actions: [
-          // ─── BOTÃO DE MUDAR O TEMA ───
           ValueListenableBuilder<ThemeMode>(
             valueListenable: AppTheme.themeMode,
             builder: (context, currentMode, _) {
-              final isDark = currentMode == ThemeMode.dark || 
+              final isDarkTheme = currentMode == ThemeMode.dark || 
                 (currentMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
               return IconButton(
-                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                icon: Icon(isDarkTheme ? Icons.light_mode : Icons.dark_mode),
+                tooltip: 'Mudar Tema',
                 onPressed: () {
-                  AppTheme.themeMode.value = isDark ? ThemeMode.light : ThemeMode.dark;
+                  AppTheme.themeMode.value = isDarkTheme ? ThemeMode.light : ThemeMode.dark;
                 },
               );
             },
           ),
         ],
       ),
-      body: _buildBody(),
-      // Botão de submeter fixo no fundo do ecrã
+      body: _buildBody(theme, isDark),
+      
       bottomNavigationBar: (campos.isEmpty || _loading)
           ? null
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -4),
+                    )
+                  ],
+                ),
                 child: ElevatedButton.icon(
                   onPressed: _salvando ? null : _salvarRegisto,
                   icon: _salvando 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
-                    : const Icon(Icons.send),
-                  label: Text(_salvando ? 'A guardar...' : 'SUBMETER DADOS'),
+                    ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onPrimary)) 
+                    : const Icon(Icons.send_rounded),
+                  label: Text(
+                    _salvando ? 'A guardar...' : 'SUBMETER DADOS', 
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5)
+                  ),
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
                   ),
                 ),
               ),
@@ -149,128 +152,100 @@ class _PreencherTabelaScreenState extends State<PreencherTabelaScreen> {
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(ThemeData theme, bool isDark) {
     if (_loading) {
-      return const Center(
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (campos.isEmpty) {
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('A carregar campos...'),
+            Icon(Icons.edit_off_rounded, size: 64, color: theme.disabledColor),
+            const SizedBox(height: 16),
+            const Text('Nenhum campo definido.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
       );
     }
 
-    if (campos.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.edit_off, size: 48, color: Colors.grey),
-              SizedBox(height: 16),
-              Text(
-                'Nenhum campo definido.',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                'Pede ao administrador para adicionar campos.',
-                textAlign: TextAlign.center,
-              ),
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: campos.length,
+      itemBuilder: (context, index) {
+        final campo = campos[index];
+        final isObrigatorio = campo.obrigatorio == 1;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.dividerColor.withOpacity(isDark ? 0.3 : 0.8)),
+            boxShadow: [
+              if (!isDark)
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
             ],
           ),
-        ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // ─── CARTÃO DE PROGRESSO ───
-        Card(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      'Progresso: $_camposPreenchidos de ${campos.length}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${index + 1}', 
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)
+                      ),
                     ),
-                    Text('${(_progresso * 100).toInt()}%'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        campo.nomeCampo,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      ),
+                    ),
+                    if (isObrigatorio)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Obrigatório',
+                          style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                   ],
                 ),
-                if (_obrigatoriosPorPreencher > 0) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '$_obrigatoriosPorPreencher campo(s) obrigatório(s) pendente(s)',
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                LinearProgressIndicator(
-                  value: _progresso,
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(4),
+                const SizedBox(height: 16),
+                
+                // O problema original das cores pretas resolve-se ajustando o código do CampoWidget!
+                CampoWidget(
+                  campo: campo,
+                  onValueChanged: (nomeCampo, valor) {
+                    setState(() => dadosPreenchidos[nomeCampo] = valor);
+                  },
                 ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-
-        // ─── LISTA DE CAMPOS ───
-        ...campos.asMap().entries.map((entry) {
-          final index = entry.key;
-          final campo = entry.value;
-          final isObrigatorio = campo.obrigatorio == 1;
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 12,
-                        child: Text('${index + 1}', style: const TextStyle(fontSize: 12)),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          campo.nomeCampo,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      if (isObrigatorio)
-                        const Text(
-                          '* Obrigatório',
-                          style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  CampoWidget(
-                    campo: campo,
-                    onValueChanged: (nomeCampo, valor) {
-                      setState(() => dadosPreenchidos[nomeCampo] = valor);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ],
+        );
+      },
     );
   }
 }

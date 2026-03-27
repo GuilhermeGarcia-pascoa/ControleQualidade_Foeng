@@ -43,40 +43,45 @@ class _NosScreenState extends State<NosScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Renomear Pasta'),
         content: TextField(
           controller: nomeC,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Novo nome'),
+          decoration: const InputDecoration(labelText: 'Novo nome', border: OutlineInputBorder()),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancelar')),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             onPressed: () async {
               final novoNome = nomeC.text.trim();
               if (novoNome.isEmpty || novoNome == no.nome) return;
               
-              // Verifica se já existe outra pasta com este nome no MESMO local (ignorando maiúsculas/minúsculas)
               final jaExiste = nos.any((n) => n.id != no.id && n.nome.toLowerCase() == novoNome.toLowerCase());
               
-              Navigator.pop(context); // Fecha o dialog de texto
+              Navigator.pop(context);
 
               if (jaExiste) {
-                // Pergunta se tem a certeza
                 final confirmar = await showDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     title: const Text('Atenção'),
                     content: Text('Já existe uma pasta chamada "$novoNome" neste local.\n\nQueres renomear na mesma?'),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Renomear')),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                        onPressed: () => Navigator.pop(context, true), 
+                        child: const Text('Renomear'),
+                      ),
                     ],
                   ),
                 );
-                if (confirmar != true) return; // Se disser que não, cancela tudo
+                if (confirmar != true) return;
               }
 
               await DatabaseHelper.instance.renomearNo(no.id!, novoNome);
@@ -99,6 +104,7 @@ class _NosScreenState extends State<NosScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Mover Pasta'),
           content: SizedBox(
             width: double.maxFinite,
@@ -111,7 +117,7 @@ class _NosScreenState extends State<NosScreen> {
                 RadioListTile<No?>(
                   value: null,
                   groupValue: destinoSelecionado,
-                  title: const Text('Raiz do projeto'),
+                  title: const Text('Raiz do projeto', style: TextStyle(fontWeight: FontWeight.bold)),
                   onChanged: (v) => setStateDialog(() => destinoSelecionado = v),
                 ),
                 const Divider(),
@@ -135,7 +141,8 @@ class _NosScreenState extends State<NosScreen> {
             TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancelar')),
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
               onPressed: () async {
                 Navigator.pop(context);
                 await DatabaseHelper.instance.moverNo(no.id!, novoPaiId: destinoSelecionado?.id);
@@ -154,6 +161,7 @@ class _NosScreenState extends State<NosScreen> {
     bool? incluirRegistos = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Copiar Pasta'),
         content: const Text('Queres incluir os registos (dados submetidos) na cópia?'),
         actions: [
@@ -161,7 +169,8 @@ class _NosScreenState extends State<NosScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Não, só estrutura'),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Sim, incluir registos'),
           ),
@@ -238,43 +247,47 @@ class _NosScreenState extends State<NosScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Nova Pasta'),
         content: TextField(
           controller: nomeC,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Nome da pasta'),
+          decoration: const InputDecoration(labelText: 'Nome da pasta', border: OutlineInputBorder()),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancelar')),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             onPressed: () async {
               final nome = nomeC.text.trim();
               if (nome.isEmpty) return;
 
-              // Verifica se já existe uma pasta com este nome no MESMO local
               final jaExiste = nos.any((n) => n.nome.toLowerCase() == nome.toLowerCase());
 
-              Navigator.pop(context); // Fecha o dialog de texto
+              Navigator.pop(context); 
 
               if (jaExiste) {
-                // Pergunta se tem a certeza
                 final confirmar = await showDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     title: const Text('Atenção'),
                     content: Text('Já existe uma pasta chamada "$nome" neste local.\n\nQueres criar outra com o mesmo nome?'),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Criar na mesma')),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                        onPressed: () => Navigator.pop(context, true), 
+                        child: const Text('Criar na mesma'),
+                      ),
                     ],
                   ),
                 );
-                if (confirmar != true) return; // Se disser que não, cancela tudo
+                if (confirmar != true) return;
               }
 
-              // Se não existia, ou se ele confirmou que quer criar na mesma, cria:
               await DatabaseHelper.instance.criarNo(
                 widget.projeto.id!,
                 paiId: widget.pai?.id,
@@ -303,14 +316,20 @@ class _NosScreenState extends State<NosScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Apagar Pasta'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Apagar Pasta', style: TextStyle(color: Colors.red)),
         content: Text('Tens a certeza que queres apagar "${no.nome}" e todo o seu conteúdo?\n\nEsta ação não pode ser desfeita.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Apagar'),
           ),
@@ -323,21 +342,29 @@ class _NosScreenState extends State<NosScreen> {
     }
   }
 
+  // ─── BUILD PRINCIPAL ───
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final temCampos = campos.isNotEmpty;
+    
     final caminhoCompleto = [
       widget.projeto.nome,
       ...widget.breadcrumb,
       if (widget.pai != null) widget.pai!.nome,
     ];
-    final temCampos = campos.isNotEmpty;
 
     return Scaffold(
+      backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF5F7FA),
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.pai?.nome ?? widget.projeto.nome),
+            Text(widget.pai?.nome ?? widget.projeto.nome, style: const TextStyle(fontWeight: FontWeight.bold)),
             if (caminhoCompleto.length > 1)
               SizedBox(
                 height: 20,
@@ -366,16 +393,15 @@ class _NosScreenState extends State<NosScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
-                                  decoration: isLast ? TextDecoration.none : TextDecoration.underline,
-                                  color: isLast ? null : Theme.of(context).colorScheme.primary,
+                                  color: isLast ? theme.colorScheme.onSurface : theme.colorScheme.primary,
                                 ),
                               ),
                             ),
                           ),
                           if (!isLast)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4.0),
-                              child: Text('/', style: TextStyle(fontSize: 12)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                              child: Icon(Icons.chevron_right, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.5)),
                             ),
                         ],
                       );
@@ -393,6 +419,7 @@ class _NosScreenState extends State<NosScreen> {
                 (currentMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
               return IconButton(
                 icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                tooltip: 'Mudar Tema',
                 onPressed: () {
                   AppTheme.themeMode.value = isDark ? ThemeMode.light : ThemeMode.dark;
                 },
@@ -413,62 +440,124 @@ class _NosScreenState extends State<NosScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
-                if (temCampos && widget.pai != null)
-                  ElevatedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => PreencherTabelaScreen(no: widget.pai!)),
+                // ─── BOTÕES LADO A LADO (Se a pasta tiver formulário) ───
+                if (temCampos && widget.pai != null) ...[
+                  Text(
+                    'Ações Rápidas',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
-                    icon: const Icon(Icons.edit_note),
-                    label: const Text('Preencher Formulário'),
                   ),
-                const SizedBox(height: 8),
-                if (temCampos && widget.pai != null)
-                  ElevatedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MostrarDadosScreen(noId: widget.pai!.id!),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ActionCard(
+                          icon: Icons.edit_document,
+                          title: 'Preencher\nFormulário',
+                          color: theme.colorScheme.primary,
+                          isDark: isDark,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => PreencherTabelaScreen(no: widget.pai!)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _ActionCard(
+                          icon: Icons.table_chart_rounded,
+                          title: 'Ver\nRegistos',
+                          color: Colors.orange.shade400,
+                          isDark: isDark,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => MostrarDadosScreen(noId: widget.pai!.id!)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // ─── CABEÇALHO DA LISTA DE PASTAS ───
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Pastas',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
-                    icon: const Icon(Icons.table_view),
-                    label: const Text('Ver Registos Desta Pasta'),
-                  ),
-                const SizedBox(height: 16),
-                if (nos.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text('${nos.length} pasta(s) encontradas'),
-                  ),
+                    if (nos.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${nos.length}',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                        ),
+                      )
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // ─── ESTADO VAZIO ───
                 if (nos.isEmpty && !temCampos)
-                  const Center(child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Text('Pasta vazia.'),
-                  )),
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.folder_open, size: 64, color: theme.disabledColor),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Pasta vazia.',
+                            style: TextStyle(color: theme.disabledColor, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // ─── LISTA DE PASTAS (Cards Modernos) ───
                 ...nos.asMap().entries.map((entry) {
                   final no = entry.value;
-                  return Card(
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.dividerColor.withOpacity(isDark ? 0.2 : 0.6)),
+                      boxShadow: [
+                        if (!isDark)
+                          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))
+                      ],
+                    ),
                     child: ListTile(
-                      leading: const Icon(Icons.folder),
-                      title: Text(no.nome),
-                      trailing: widget.perfil == 'admin' ? PopupMenuButton<String>(
-                        onSelected: (valor) {
-                          if (valor == 'renomear') _renomearNo(no);
-                          if (valor == 'mover') _moverNo(no);
-                          if (valor == 'copiar') _copiarNo(no);
-                          if (valor == 'apagar') _apagarNo(no);
-                          if (valor == 'acesso') Navigator.push(context, MaterialPageRoute(builder: (_) => GerirAcessoNoScreen(no: no)));
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'renomear', child: Text('Renomear')),
-                          PopupMenuItem(value: 'mover', child: Text('Mover para...')),
-                          PopupMenuItem(value: 'copiar', child: Text('Copiar para...')),
-                          PopupMenuItem(value: 'acesso', child: Text('Gerir Acesso')),
-                          PopupMenuItem(value: 'apagar', child: Text('Apagar')),
-                        ],
-                      ) : const Icon(Icons.chevron_right),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.folder_rounded, color: theme.colorScheme.secondary),
+                      ),
+                      title: Text(no.nome, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                      trailing: widget.perfil == 'admin' ? _buildAdminMenu(no) : const Icon(Icons.chevron_right_rounded),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -488,30 +577,111 @@ class _NosScreenState extends State<NosScreen> {
       floatingActionButton: widget.perfil == 'admin'
           ? Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (widget.pai != null)
-                  FloatingActionButton(
+                  FloatingActionButton.small(
                     heroTag: 'campos',
                     onPressed: _abrirCriarCampos,
-                    tooltip: 'Gerir Campos',
+                    tooltip: 'Gerir Campos (Formulário)',
                     child: const Icon(Icons.list_alt),
                   ),
                 const SizedBox(height: 12),
-                FloatingActionButton(
+                FloatingActionButton.extended(
                   heroTag: 'pasta',
                   onPressed: _criarNo,
-                  tooltip: 'Nova Pasta',
-                  child: const Icon(Icons.create_new_folder),
+                  icon: const Icon(Icons.create_new_folder),
+                  label: const Text('Nova Pasta', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             )
           : null,
     );
   }
+
+  Widget _buildAdminMenu(No no) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (valor) {
+        if (valor == 'renomear') _renomearNo(no);
+        if (valor == 'mover') _moverNo(no);
+        if (valor == 'copiar') _copiarNo(no);
+        if (valor == 'acesso') Navigator.push(context, MaterialPageRoute(builder: (_) => GerirAcessoNoScreen(no: no)));
+        if (valor == 'apagar') _apagarNo(no);
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'renomear', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 10), Text('Renomear')])),
+        PopupMenuItem(value: 'mover', child: Row(children: [Icon(Icons.drive_file_move, size: 20), SizedBox(width: 10), Text('Mover para...')])),
+        PopupMenuItem(value: 'copiar', child: Row(children: [Icon(Icons.copy, size: 20), SizedBox(width: 10), Text('Copiar para...')])),
+        PopupMenuItem(value: 'acesso', child: Row(children: [Icon(Icons.security, size: 20), SizedBox(width: 10), Text('Gerir Acesso')])),
+        PopupMenuDivider(),
+        PopupMenuItem(value: 'apagar', child: Row(children: [Icon(Icons.delete, size: 20, color: Colors.red), SizedBox(width: 10), Text('Apagar', style: TextStyle(color: Colors.red))])),
+      ],
+    );
+  }
+}
+
+// ─── WIDGET AUXILIAR PARA OS CARTÕES DE AÇÃO LADO A LADO ───
+class _ActionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Color color;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withOpacity(isDark ? 0.15 : 0.1),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        splashColor: color.withOpacity(0.2),
+        highlightColor: color.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 28, color: color),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// NAVEGADOR DE DESTINO 
+// NAVEGADOR DE DESTINO (MANTIDO INTACTO)
 // ════════════════════════════════════════════════════════════════════════════
 class _NavegadorDestinoCopia extends StatefulWidget {
   final List<Projeto> projetos;
@@ -582,56 +752,77 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
   @override
   Widget build(BuildContext context) {
     final int? paiIdAtual = _pilha.isEmpty ? null : _pilha.last.id;
+    final theme = Theme.of(context);
 
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Text('Destino da Cópia'),
       content: SizedBox(
         width: double.maxFinite,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            DropdownButton<int>(
-              value: _projetoAtualId,
-              isExpanded: true,
-              items: widget.projetos
-                  .map((p) => DropdownMenuItem<int>(
-                        value: p.id!,
-                        child: Text(p.nome),
-                      ))
-                  .toList(),
-              onChanged: (id) { if (id != null) _mudarProjeto(id); },
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: _projetoAtualId,
+                  isExpanded: true,
+                  items: widget.projetos
+                      .map((p) => DropdownMenuItem<int>(
+                            value: p.id!,
+                            child: Text(p.nome, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ))
+                      .toList(),
+                  onChanged: (id) { if (id != null) _mudarProjeto(id); },
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _pesquisaC,
+              onChanged: (v) => setState(() => _pesquisa = v),
+              decoration: InputDecoration(
+                hintText: 'Pesquisar nesta pasta...',
+                prefixIcon: const Icon(Icons.search),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+              ),
             ),
             const SizedBox(height: 8),
             if (_pilha.isNotEmpty)
               ListTile(
-                leading: const Icon(Icons.arrow_back),
-                title: const Text('Voltar acima'),
+                leading: const Icon(Icons.drive_folder_upload, color: Colors.blue),
+                title: const Text('Subir um nível', style: TextStyle(color: Colors.blue)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 onTap: () {
                   _pilha.removeLast();
                   _carregarNos();
                 },
               ),
-            TextField(
-              controller: _pesquisaC,
-              onChanged: (v) => setState(() => _pesquisa = v),
-              decoration: const InputDecoration(
-                hintText: 'Pesquisar nesta pasta...',
-                prefixIcon: Icon(Icons.search),
-              ),
-            ),
-            const SizedBox(height: 8),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
+                  : _nosFiltrados.isEmpty 
+                    ? const Center(child: Text('Nenhuma pasta aqui.'))
+                    : ListView.builder(
                       itemCount: _nosFiltrados.length,
                       itemBuilder: (context, i) {
                         final n = _nosFiltrados[i];
-                        return ListTile(
-                          leading: const Icon(Icons.folder),
-                          title: Text(n.nome),
-                          trailing: const Icon(Icons.arrow_forward_ios),
-                          onTap: () => _entrarNaPasta(n),
+                        return Card(
+                          elevation: 0,
+                          color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          child: ListTile(
+                            leading: Icon(Icons.folder, color: theme.colorScheme.primary),
+                            title: Text(n.nome),
+                            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                            onTap: () => _entrarNaPasta(n),
+                          ),
                         );
                       },
                     ),
@@ -645,6 +836,7 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
+          style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
           onPressed: () => Navigator.pop(context, {
             'projetoId': _projetoAtualId,
             'paiId': paiIdAtual,
@@ -656,7 +848,7 @@ class _NavegadorDestinoCopiaState extends State<_NavegadorDestinoCopia> {
   }
 }
 
-// ─── ECRÃ DE GERIR CAMPOS ─────────────────────
+// ─── ECRÃ DE GERIR CAMPOS (MANTIDO INTACTO) ─────────────────────
 class CriarCamposScreen extends StatefulWidget {
   final No no;
   final String perfil;
@@ -693,6 +885,7 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Novo Campo'),
           content: SingleChildScrollView(
             child: Column(
@@ -701,28 +894,37 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
               children: [
                 TextField(
                   controller: nomeCampoC,
-                  decoration: const InputDecoration(labelText: 'Nome do Campo'),
+                  decoration: const InputDecoration(labelText: 'Nome do Campo', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 16),
-                const Text('Tipo de Campo:'),
-                DropdownButton<String>(
-                  value: tipoCampo,
-                  isExpanded: true,
-                  items: const [
-                    DropdownMenuItem(value: 'texto', child: Text('Texto')),
-                    DropdownMenuItem(value: 'foto', child: Text('Foto')),
-                    DropdownMenuItem(value: 'selecao', child: Text('Seleção Múltipla')),
-                    DropdownMenuItem(value: 'numero', child: Text('Número')),
-                    DropdownMenuItem(value: 'data', child: Text('Data')),
-                  ],
-                  onChanged: (v) => setStateDialog(() => tipoCampo = v!),
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Tipo de Campo', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: tipoCampo,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(value: 'texto', child: Text('Texto')),
+                        DropdownMenuItem(value: 'foto', child: Text('Foto')),
+                        DropdownMenuItem(value: 'selecao', child: Text('Seleção Múltipla')),
+                        DropdownMenuItem(value: 'numero', child: Text('Número')),
+                        DropdownMenuItem(value: 'data', child: Text('Data')),
+                      ],
+                      onChanged: (v) => setStateDialog(() => tipoCampo = v!),
+                    ),
+                  ),
                 ),
-                if (tipoCampo == 'selecao')
+                if (tipoCampo == 'selecao') ...[
+                  const SizedBox(height: 16),
                   TextField(
                     controller: opcoesC,
-                    decoration: const InputDecoration(labelText: 'Opções (separadas por vírgula)'),
+                    decoration: const InputDecoration(labelText: 'Opções (separadas por vírgula)', border: OutlineInputBorder()),
                   ),
+                ],
+                const SizedBox(height: 8),
                 CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
                   title: const Text('Preenchimento Obrigatório'),
                   value: obrigatorio,
                   onChanged: (v) => setStateDialog(() => obrigatorio = v!),
@@ -735,7 +937,8 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancelar'),
             ),
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
               onPressed: () {
                 if (nomeCampoC.text.trim().isEmpty) return;
                 setState(() {
@@ -770,9 +973,17 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Campos — ${widget.no.nome}'),
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Configurar Campos', style: TextStyle(fontSize: 14)),
+            Text(widget.no.nome, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
         actions: [
           ValueListenableBuilder<ThemeMode>(
             valueListenable: AppTheme.themeMode,
@@ -788,9 +999,9 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
             },
           ),
           if (_saving)
-            const Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator())
+            const Padding(padding: EdgeInsets.all(16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
           else if (_camposNovos.isNotEmpty)
-            IconButton(icon: const Icon(Icons.save), onPressed: _guardar),
+            IconButton(icon: const Icon(Icons.save), tooltip: 'Guardar Alterações', onPressed: _guardar),
         ],
       ),
       body: _loading
@@ -799,37 +1010,65 @@ class _CriarCamposScreenState extends State<CriarCamposScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 if (_camposExistentes.isNotEmpty) ...[
-                  const Text('Campos Existentes', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ..._camposExistentes.map((c) => ListTile(
-                        leading: const Icon(Icons.label),
-                        title: Text(c.nomeCampo),
-                        subtitle: Text(c.tipoCampo),
+                  Text('Campos Existentes', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                  const SizedBox(height: 8),
+                  ..._camposExistentes.map((c) => Card(
+                        elevation: 0,
+                        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: theme.colorScheme.background,
+                            child: const Icon(Icons.label_outline, size: 20),
+                          ),
+                          title: Text(c.nomeCampo, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(c.tipoCampo.toUpperCase(), style: const TextStyle(fontSize: 12)),
+                          trailing: c.obrigatorio == 1 ? const Icon(Icons.star, color: Colors.amber, size: 16) : null,
+                        ),
                       )),
-                  const Divider(),
+                  const SizedBox(height: 24),
                 ],
+                
                 if (_camposNovos.isNotEmpty) ...[
-                  const Text('Novos Campos (por guardar)', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ..._camposNovos.asMap().entries.map((e) => ListTile(
-                        leading: const Icon(Icons.fiber_new),
-                        title: Text(e.value['nome_campo']),
-                        subtitle: Text(e.value['tipo_campo']),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () => setState(() => _camposNovos.removeAt(e.key)),
+                  Text('Novos Campos (por guardar)', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.green)),
+                  const SizedBox(height: 8),
+                  ..._camposNovos.asMap().entries.map((e) => Card(
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Colors.green, width: 1)),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.green.withOpacity(0.2),
+                            child: const Icon(Icons.fiber_new, color: Colors.green),
+                          ),
+                          title: Text(e.value['nome_campo'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(e.value['tipo_campo'].toString().toUpperCase(), style: const TextStyle(fontSize: 12)),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            onPressed: () => setState(() => _camposNovos.removeAt(e.key)),
+                          ),
                         ),
                       )),
                 ],
+                
                 if (_camposExistentes.isEmpty && _camposNovos.isEmpty)
-                  const Center(child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Text('Nenhum campo configurado.'),
+                  Center(child: Padding(
+                    padding: const EdgeInsets.all(40.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.list_alt, size: 64, color: theme.disabledColor),
+                        const SizedBox(height: 16),
+                        Text('Nenhum campo configurado.', style: TextStyle(color: theme.disabledColor, fontSize: 16)),
+                      ],
+                    ),
                   )),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _adicionarCampo,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Adicionar Campo'),
       ),
     );
   }
-}
+} 

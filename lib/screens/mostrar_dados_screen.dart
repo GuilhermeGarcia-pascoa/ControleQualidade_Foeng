@@ -56,9 +56,10 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
       setState(() => _loading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erro: $e'),
-        backgroundColor: Colors.red,
+        content: Text('Erro: $e', style: const TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red.shade800,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));
     }
   }
@@ -161,7 +162,7 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
           clipBehavior: Clip.none,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               child: InteractiveViewer(
                 minScale: 0.5,
                 maxScale: 4.0,
@@ -191,6 +192,8 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
               top: -12,
               right: -12,
               child: FloatingActionButton.small(
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
                 onPressed: () => Navigator.pop(context),
                 child: const Icon(Icons.close),
               ),
@@ -205,50 +208,62 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Registos'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Registos da Tabela', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text('Consulta e pesquisa de dados', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+          ],
+        ),
         actions: [
-          // ─── BOTÃO DE TEMA ───
           ValueListenableBuilder<ThemeMode>(
             valueListenable: AppTheme.themeMode,
             builder: (context, currentMode, _) {
-              final isDark = currentMode == ThemeMode.dark || 
+              final isDarkTheme = currentMode == ThemeMode.dark || 
                 (currentMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
               return IconButton(
-                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                icon: Icon(isDarkTheme ? Icons.light_mode : Icons.dark_mode),
+                tooltip: 'Mudar Tema',
                 onPressed: () {
-                  AppTheme.themeMode.value = isDark ? ThemeMode.light : ThemeMode.dark;
+                  AppTheme.themeMode.value = isDarkTheme ? ThemeMode.light : ThemeMode.dark;
                 },
               );
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Atualizar',
             onPressed: _carregar,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _todos.isEmpty
-              ? _buildEmpty()
+              ? _buildEmpty(theme)
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildFiltros(),
-                    _buildInfoBar(),
-                    const Divider(height: 1),
-                    Expanded(child: _buildTabela()),
+                    _buildFiltros(theme, isDark),
+                    _buildInfoBar(theme),
+                    Expanded(child: _buildTabela(theme, isDark)),
                   ],
                 ),
     );
   }
 
-  Widget _buildFiltros() {
+  Widget _buildFiltros(ThemeData theme, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -260,38 +275,50 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
                   decoration: InputDecoration(
                     hintText: _filtroColuna != null
                         ? 'Pesquisar em "$_filtroColuna"...'
-                        : 'Pesquisar em tudo...',
-                    prefixIcon: const Icon(Icons.search),
+                        : 'Pesquisar em todos os campos...',
+                    prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear),
+                            icon: const Icon(Icons.clear_rounded),
                             onPressed: () => _searchCtrl.clear(),
                           )
                         : null,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
+                    filled: true,
+                    fillColor: isDark ? theme.colorScheme.surfaceVariant.withOpacity(0.3) : theme.colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
                   ),
                 ),
               ),
               if (_temFiltros) ...[
                 const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: _limparFiltros,
-                  icon: const Icon(Icons.filter_alt_off),
-                  label: const Text('Limpar'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: IconButton(
+                    onPressed: _limparFiltros,
+                    icon: const Icon(Icons.filter_alt_off_rounded, color: Colors.red),
+                    tooltip: 'Limpar Filtros',
+                  ),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
                 ChoiceChip(
-                  label: const Text('Todos os campos'),
+                  label: const Text('Todos'),
                   selected: _filtroColuna == null,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   onSelected: (val) => setState(() {
                     _filtroColuna = null;
                     _aplicarFiltros();
@@ -305,6 +332,7 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
                     child: ChoiceChip(
                       label: Text(nome),
                       selected: _filtroColuna == nome,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       onSelected: (val) => setState(() {
                         _filtroColuna = _filtroColuna == nome ? null : nome;
                         _aplicarFiltros();
@@ -320,125 +348,187 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
     );
   }
 
-  Widget _buildInfoBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+  Widget _buildInfoBar(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, size: 16),
-          const SizedBox(width: 8),
-          Text(
-            _temFiltros
-                ? 'A mostrar ${_filtrados.length} de ${_todos.length} registos'
-                : 'Total de ${_todos.length} registos',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          Icon(Icons.bar_chart_rounded, size: 20, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _temFiltros
+                  ? 'A mostrar ${_filtrados.length} de ${_todos.length} registos'
+                  : 'Total de ${_todos.length} registos submetidos',
+              style: TextStyle(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface),
+            ),
           ),
           if (_sortColuna != null) ...[
-            const Spacer(),
-            Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
-            const SizedBox(width: 4),
-            Text('Ordenado por $_sortColuna', style: const TextStyle(fontSize: 12)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Text('Ordem: $_sortColuna', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 4),
+                  Icon(_sortAsc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 14),
+                ],
+              ),
+            ),
           ]
         ],
       ),
     );
   }
 
-  Widget _buildTabela() {
+  Widget _buildTabela(ThemeData theme, bool isDark) {
     if (_filtrados.isEmpty) {
       return Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off, size: 48, color: Colors.grey),
+            Icon(Icons.search_off_rounded, size: 64, color: theme.disabledColor),
             const SizedBox(height: 16),
             const Text('Sem resultados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Text('Nenhum registo encontrado para "$_filtroBusca"'),
+            const SizedBox(height: 8),
+            Text('Nenhum registo encontrado para "$_filtroBusca"', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6))),
           ],
         ),
       );
     }
 
-    return Scrollbar(
-      controller: _scrollV,
-      child: SingleChildScrollView(
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      elevation: isDark ? 1 : 0.5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isDark ? BorderSide.none : BorderSide(color: theme.dividerColor.withOpacity(0.5)),
+      ),
+      clipBehavior: Clip.antiAlias, // Para a tabela não sair dos cantos arredondados
+      child: Scrollbar(
         controller: _scrollV,
-        child: LayoutBuilder(
-          builder: (ctx, constraints) => Scrollbar(
-            controller: _scrollH,
-            child: SingleChildScrollView(
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollV,
+          physics: const BouncingScrollPhysics(),
+          child: LayoutBuilder(
+            builder: (ctx, constraints) => Scrollbar(
               controller: _scrollH,
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  showCheckboxColumn: false,
-                  columns: _campos.map((c) {
-                    final nome = c['nome'] as String;
-                    final isSorted = _sortColuna == nome;
-                    return DataColumn(
-                      label: InkWell(
-                        onTap: () => _toggleSort(nome),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              nome.toUpperCase(),
-                              style: TextStyle(fontWeight: isSorted ? FontWeight.bold : FontWeight.normal),
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _scrollH,
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    headingRowColor: MaterialStateProperty.all(theme.colorScheme.surfaceVariant.withOpacity(isDark ? 0.3 : 0.5)),
+                    dataRowMinHeight: 56,
+                    dataRowMaxHeight: double.infinity,
+                    showCheckboxColumn: false,
+                    columns: _campos.map((c) {
+                      final nome = c['nome'] as String;
+                      final isSorted = _sortColuna == nome;
+                      return DataColumn(
+                        label: InkWell(
+                          onTap: () => _toggleSort(nome),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  nome.toUpperCase(),
+                                  style: TextStyle(
+                                    fontWeight: isSorted ? FontWeight.bold : FontWeight.w600,
+                                    color: isSorted ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                if (isSorted) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(_sortAsc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 16, color: theme.colorScheme.primary),
+                                ],
+                              ],
                             ),
-                            if (isSorted) ...[
-                              const SizedBox(width: 4),
-                              Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
-                            ],
-                          ],
+                          ),
                         ),
-                      ),
-                    );
-                  }).toList(),
-                  rows: _filtrados.map((entry) {
-                    final dados = _parseDados(entry);
-                    return DataRow(
-                      cells: _campos.map((c) {
-                        final val = dados[c['nome']];
-                        final empty = val == null || val.toString().trim().isEmpty;
+                      );
+                    }).toList(),
+                    rows: _filtrados.map((entry) {
+                      final dados = _parseDados(entry);
+                      return DataRow(
+                        cells: _campos.map((c) {
+                          final val = dados[c['nome']];
+                          final empty = val == null || val.toString().trim().isEmpty;
 
-                        if (empty) {
-                          return const DataCell(Text('—', style: TextStyle(color: Colors.grey)));
-                        }
+                          if (empty) {
+                            return DataCell(Text('—', style: TextStyle(color: theme.disabledColor)));
+                          }
 
-                        // ─── CÉLULA DE IMAGEM ───
-                        if (_isImagem(val?.toString())) {
+                          // ─── CÉLULA DE IMAGEM ───
+                          if (_isImagem(val?.toString())) {
+                            return DataCell(
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                child: GestureDetector(
+                                  onTap: () => _verImagemFullscreen(_urlImagem(val.toString())),
+                                  child: Hero(
+                                    tag: val.toString(), // Efeito suave ao abrir a imagem
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        boxShadow: [
+                                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          _urlImagem(val.toString()),
+                                          height: 48,
+                                          width: 48,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            height: 48, width: 48,
+                                            color: theme.colorScheme.surfaceVariant,
+                                            child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          // ─── CÉLULA DE TEXTO NORMAL ───
                           return DataCell(
-                            GestureDetector(
-                              onTap: () => _verImagemFullscreen(_urlImagem(val.toString())),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
-                                child: Image.network(
-                                  _urlImagem(val.toString()),
-                                  height: 40,
-                                  width: 40,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12.0),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 250),
+                                child: Text(
+                                  val.toString(),
+                                  style: const TextStyle(fontSize: 14),
                                 ),
                               ),
                             ),
                           );
-                        }
-
-                        // ─── CÉLULA DE TEXTO NORMAL ───
-                        return DataCell(
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 250),
-                            child: Text(
-                              val.toString(),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    );
-                  }).toList(),
+                        }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ),
@@ -448,15 +538,26 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
     );
   }
 
-  Widget _buildEmpty() {
-    return const Center(
+  Widget _buildEmpty(ThemeData theme) {
+    return Center(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.table_view, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Sem registos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          Text('Ainda não existem dados submetidos nesta pasta.'),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.table_chart_outlined, size: 64, color: theme.disabledColor),
+          ),
+          const SizedBox(height: 24),
+          const Text('Sem registos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(
+            'Ainda não existem dados submetidos nesta pasta.',
+            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 15),
+          ),
         ],
       ),
     );
