@@ -12,7 +12,7 @@ class DatabaseHelper {
 
 String get baseUrl {
     // Substitua '192.168.1.XX' pelo IP real do seu servidor/NAS
-    const String serverIp = '192.168.1.246'; 
+    const String serverIp = 'localhost'; 
 
     if (kIsWeb) return 'http://$serverIp:3000/api';
     
@@ -121,6 +121,81 @@ Future<bool> apagarProjeto(int projetoId) async {
       return 0;
     }
   }
+
+  // ─── ACESSO A NÓS ─────────────────────────────────────────
+Future<bool> darAcessoNo(int utilizadorId, int noId) async {
+  try {
+    // 1. Dar acesso à pasta
+    final responseNo = await http.post(
+      Uri.parse('$baseUrl/utilizador_no'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'utilizador_id': utilizadorId, 'no_id': noId}),
+    );
+    if (responseNo.statusCode != 200) return false;
+
+    // 2. Buscar o projeto_id do nó
+    final responseNos = await http.get(Uri.parse('$baseUrl/nos/info/$noId'));
+    if (responseNos.statusCode != 200) return false;
+    final data = jsonDecode(responseNos.body);
+    final projetoId = data['projeto_id'];
+
+    // 3. Adicionar ao projeto automaticamente (se ainda não for membro)
+    await http.post(
+      Uri.parse('$baseUrl/utilizador_projeto'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'utilizador_id': utilizadorId, 'projeto_id': projetoId}),
+    );
+
+    return true;
+  } catch (e) {
+    print("❌ ERRO darAcessoNo: $e");
+    return false;
+  }
+}
+
+Future<bool> removerAcessoNo(int utilizadorId, int noId) async {
+  try {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/utilizador_no/$noId/$utilizadorId'),
+    );
+    return response.statusCode == 200;
+  } catch (e) {
+    print("❌ ERRO removerAcessoNo: $e");
+    return false;
+  }
+}
+
+Future<List<Map<String, dynamic>>> getMembrosNo(int noId) async {
+  try {
+    final response = await http.get(Uri.parse('$baseUrl/utilizador_no/$noId'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['membros']);
+    }
+    return [];
+  } catch (e) {
+    print("❌ ERRO getMembrosNo: $e");
+    return [];
+  }
+}
+
+Future<List<int>> getNosComAcesso(int projetoId) async {
+  try {
+    final userId = await Session.getUserId();
+    final response = await http.get(
+      Uri.parse('$baseUrl/nos/$projetoId/acesso/$userId'),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<int>.from(data['nos_com_acesso']);
+    }
+    return [];
+  } catch (e) {
+    print("❌ ERRO getNosComAcesso: $e");
+    return [];
+  }
+}
+
 
   // ─── NÓS ──────────────────────────────────────────────────
   Future<List<No>> getNos(int projetoId, {int? paiId}) async {

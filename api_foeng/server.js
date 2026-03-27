@@ -4,6 +4,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { hostname } = require('os');
 
 const app = express();
 app.use(cors());
@@ -31,12 +32,20 @@ const upload = multer({
   },
 });
 
+
 const dbConfig = {
-  host: process.env.DB_HOST || 'FOpanel-mysql',
+  /*host: process.env.DB_HOST || 'FOpanel-mysql',
   user: 'foengIT',
   password: 'ITpass',
   database: 'foeng_db',
+  */
+  host: 'localhost',
+  user: 'root',
+  password: 'Admin@123+',
+  database: 'foeng_db',
 };
+
+
 // ─── LOGIN ───────────────────────────────────────────────
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
@@ -174,6 +183,25 @@ app.post('/api/projetos', async (req, res) => {
     );
     await connection.end();
     res.json({ success: true, id: result.insertId });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Buscar info de um nó (projeto_id)
+app.get('/api/nos/info/:noId', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      'SELECT id, projeto_id, pai_id, nome FROM nos WHERE id = ?',
+      [req.params.noId]
+    );
+    await connection.end();
+    if (rows.length > 0) {
+      res.json({ success: true, ...rows[0] });
+    } else {
+      res.status(404).json({ success: false });
+    }
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -408,6 +436,117 @@ app.get('/api/utilizador_projeto/:projetoId', async (req, res) => {
   }
 });
 
+
+// ─── ACESSO A NÓS ─────────────────────────────────────────
+
+// Dar acesso a um utilizador a uma pasta
+app.post('/api/utilizador_no', async (req, res) => {
+  const { utilizador_id, no_id } = req.body;
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    await connection.execute(
+      'INSERT IGNORE INTO utilizador_no (utilizador_id, no_id) VALUES (?, ?)',
+      [utilizador_id, no_id]
+    );
+    await connection.end();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Remover acesso de um utilizador a uma pasta
+app.delete('/api/utilizador_no/:noId/:utilizadorId', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    await connection.execute(
+      'DELETE FROM utilizador_no WHERE no_id = ? AND utilizador_id = ?',
+      [req.params.noId, req.params.utilizadorId]
+    );
+    await connection.end();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Listar membros com acesso a uma pasta
+app.get('/api/utilizador_no/:noId', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      `SELECT u.id, u.nome, u.email, u.perfil
+       FROM utilizadores u
+       INNER JOIN utilizador_no un ON u.id = un.utilizador_id
+       WHERE un.no_id = ?`,
+      [req.params.noId]
+    );
+    await connection.end();
+    res.json({ success: true, membros: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Verificar se um utilizador tem acesso a um nó
+// (verifica o próprio nó e todos os seus ancestrais)
+app.get('/api/utilizador_no/:noId/acesso/:userId', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const { noId, userId } = req.params;
+
+    // Buscar todos os ancestrais do nó recursivamente
+    let noAtual = parseInt(noId);
+    let temAcesso = false;
+
+    while (noAtual !== null) {
+      const [acesso] = await connection.execute(
+        'SELECT id FROM utilizador_no WHERE no_id = ? AND utilizador_id = ?',
+        [noAtual, userId]
+      );
+      if (acesso.length > 0) { temAcesso = true; break; }
+
+      const [pai] = await connection.execute(
+        'SELECT pai_id FROM nos WHERE id = ?', [noAtual]
+      );
+      if (pai.length === 0 || pai[0].pai_id === null) break;
+      noAtual = pai[0].pai_id;
+    }
+
+    await connection.end();
+    res.json({ success: true, temAcesso });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Buscar nós raiz a que um trabalhador tem acesso num projeto
+app.get('/api/nos/:projetoId/acesso/:userId', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+
+    // Buscar todos os nós a que o utilizador tem acesso direto neste projeto
+    const [nosComAcesso] = await connection.execute(
+      `SELECT n.* FROM nos n
+       INNER JOIN utilizador_no un ON n.id = un.no_id
+       WHERE n.projeto_id = ? AND un.utilizador_id = ?`,
+      [req.params.projetoId, req.params.userId]
+    );
+
+    // Para cada nó com acesso, subir até encontrar a raiz visível
+    // (o nó mais alto da hierarquia a que tem acesso)
+    const nosRaizAcesso = new Set();
+    for (const no of nosComAcesso) {
+      nosRaizAcesso.add(no.id);
+    }
+
+    await connection.end();
+    res.json({ success: true, nos_com_acesso: Array.from(nosRaizAcesso) });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/utilizador_projeto', async (req, res) => {
   const { utilizador_id, projeto_id } = req.body;
   try {
@@ -481,5 +620,5 @@ async function copiarNoRecursivo(connection, noId, novoPaiId, novoProjetoId, inc
 
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 API a correr em http://localhost:${PORT}`);
+  console.log(`API a correr em ${hostname}:${PORT}`);
 });

@@ -5,6 +5,7 @@ import 'preencher_tabela_screen.dart';
 import 'gerir_membros_screen.dart';
 import 'mostrar_dados_screen.dart';
 import '../utils/toast.dart';
+import 'gerir_acesso_no_screen.dart';
 
 // --- CORES BASE DO DARK MODE ---
 const Color bgColor = Color(0xFF121212);
@@ -232,20 +233,35 @@ class _NosScreenState extends State<NosScreen> {
   }
 
   void _loadDados() async {
-    setState(() => _loading = true);
-    final nosData = await DatabaseHelper.instance.getNos(
-      widget.projeto.id!,
-      paiId: widget.pai?.id,
-    );
-    final camposData = widget.pai != null
-        ? await DatabaseHelper.instance.getCampos(widget.pai!.id!)
-        : <CampoDinamico>[];
-    setState(() {
-      nos = nosData;
-      campos = camposData;
-      _loading = false;
-    });
+  setState(() => _loading = true);
+
+  final nosData = await DatabaseHelper.instance.getNos(
+    widget.projeto.id!,
+    paiId: widget.pai?.id,
+  );
+
+  List<No> nosFiltrados = nosData;
+
+  // Se for trabalhador, filtra só os nós a que tem acesso
+  if (widget.perfil == 'trabalhador') {
+    if (widget.pai == null) {
+      // Na raiz do projeto: só mostra pastas a que tem acesso direto
+      final nosComAcesso = await DatabaseHelper.instance.getNosComAcesso(widget.projeto.id!);
+      nosFiltrados = nosData.where((n) => nosComAcesso.contains(n.id)).toList();
+    }
+    // Dentro de uma pasta com acesso: mostra todas as subpastas (sem filtro)
   }
+
+  final camposData = widget.pai != null
+      ? await DatabaseHelper.instance.getCampos(widget.pai!.id!)
+      : <CampoDinamico>[];
+
+  setState(() {
+    nos = nosFiltrados;
+    campos = camposData;
+    _loading = false;
+  });
+}
 
   void _criarNo() {
     final nomeC = TextEditingController();
@@ -458,28 +474,32 @@ class _NosScreenState extends State<NosScreen> {
                 if (nos.isEmpty && !temCampos)
                   _PastaVaziaWidget(isAdmin: widget.perfil == 'admin'),
                 ...nos.asMap().entries.map((entry) {
-                  final no = entry.value;
-                  return _PastaCard(
-                    no: no,
-                    index: entry.key,
-                    isAdmin: widget.perfil == 'admin',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NosScreen(
-                          projeto: widget.projeto,
-                          perfil: widget.perfil,
-                          pai: no,
-                          breadcrumb: caminhoCompleto.skip(1).toList(),
-                        ),
-                      ),
-                    ).then((_) => _loadDados()),
-                    onDelete: () => _apagarNo(no),
-                    onRenomear: () => _renomearNo(no),
-                    onMover: () => _moverNo(no),
-                    onCopiar: () => _copiarNo(no),
-                  );
-                }),
+  final no = entry.value;
+  return _PastaCard(
+    no: no,
+    index: entry.key,
+    isAdmin: widget.perfil == 'admin',
+    onTap: () => Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NosScreen(
+          projeto: widget.projeto,
+          perfil: widget.perfil,
+          pai: no,
+          breadcrumb: caminhoCompleto.skip(1).toList(),
+        ),
+      ),
+    ).then((_) => _loadDados()),
+    onDelete: () => _apagarNo(no),
+    onRenomear: () => _renomearNo(no),
+    onMover: () => _moverNo(no),
+    onCopiar: () => _copiarNo(no),
+    onAcesso: () => Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => GerirAcessoNoScreen(no: no)),
+    ),
+  );
+}),
               ],
             ),
       floatingActionButton: widget.perfil == 'admin'
@@ -1028,11 +1048,12 @@ class _PastaCard extends StatelessWidget {
   final VoidCallback onRenomear;
   final VoidCallback onMover;
   final VoidCallback onCopiar;
+  final VoidCallback onAcesso;
 
   const _PastaCard({
     required this.no, required this.index, required this.isAdmin,
     required this.onTap, required this.onDelete, required this.onRenomear,
-    required this.onMover, required this.onCopiar,
+    required this.onMover, required this.onCopiar, required this.onAcesso,
   });
 
   Color _corPasta(int index) {
@@ -1081,6 +1102,7 @@ class _PastaCard extends StatelessWidget {
                         case 'mover': onMover(); break;
                         case 'copiar': onCopiar(); break;
                         case 'apagar': onDelete(); break;
+                        case 'acesso': onAcesso(); break;
                       }
                     },
                     itemBuilder: (_) => [
@@ -1099,6 +1121,11 @@ class _PastaCard extends StatelessWidget {
                         SizedBox(width: 10),
                         Text('Apagar', style: TextStyle(color: Colors.redAccent)),
                       ])),
+                      const PopupMenuItem(value: 'acesso', child: Row(children: [
+  Icon(Icons.lock_open_outlined, color: Color(0xFF4527A0), size: 20),
+  SizedBox(width: 10),
+  Text('Gerir Acesso'),
+])),
                     ],
                   ),
                 const Icon(Icons.chevron_right_rounded, color: textMuted, size: 24),

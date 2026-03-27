@@ -55,7 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     _fabAnim.dispose();
     super.dispose();
   }
-
+  
   void _loadProjetos() async {
     setState(() => _loading = true);
     List<Projeto> data;
