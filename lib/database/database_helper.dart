@@ -14,12 +14,12 @@ bool islocalhost = true;
 
 String get baseUrl {
 
-  const String serverIp = "";
+   String serverIp = "";
 
   if(islocalhost) {
-    String serverIp = 'localhost';
+    serverIp = 'localhost';
   } else {
-    String serverIp = '192.168.1.246';
+    serverIp = '192.168.1.246';
   }
 
     if (kIsWeb) return 'http://$serverIp:3000/api';
