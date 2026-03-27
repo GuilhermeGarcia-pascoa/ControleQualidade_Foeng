@@ -138,6 +138,69 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
 
   bool get _temFiltros => _filtroBusca.isNotEmpty || _filtroColuna != null || _sortColuna != null;
 
+  // ─── HELPERS DE IMAGEM ────────────────────────────────────
+
+  bool _isImagem(String? val) {
+    if (val == null || val.isEmpty) return false;
+    final lower = val.toLowerCase();
+    if (lower.startsWith('/uploads/')) return true;
+    if (lower.startsWith('http') &&
+        (lower.endsWith('.jpg') ||
+         lower.endsWith('.jpeg') ||
+         lower.endsWith('.png') ||
+         lower.endsWith('.gif') ||
+         lower.endsWith('.webp'))) return true;
+    return false;
+  }
+
+  String _urlImagem(String caminho) {
+    if (caminho.startsWith('http')) return caminho;
+    // Remove o '/api' do baseUrl para chegar à raiz do servidor
+    final base = DatabaseHelper.instance.baseUrl.replaceFirst('/api', '');
+    return '$base$caminho';
+  }
+
+  void _verImagemFullscreen(String url) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(Icons.broken_image_rounded, color: _textMut, size: 48),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,8 +393,8 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
                   columnSpacing: 20,
                   horizontalMargin: 16,
                   headingRowHeight: 42,
-                  dataRowMinHeight: 48,
-                  dataRowMaxHeight: 48,
+                  dataRowMinHeight: 56,
+                  dataRowMaxHeight: 56,
                   dividerThickness: 0.5,
                   border: TableBorder(
                     horizontalInside: BorderSide(color: _border, width: 0.5),
@@ -373,16 +436,65 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
                       cells: _campos.map((c) {
                         final val = dados[c['nome']];
                         final empty = val == null || val.toString().trim().isEmpty;
-                        return DataCell(
-                          empty
-                              ? const Text('—', style: TextStyle(color: _textMut, fontSize: 14))
-                              : ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 200),
-                                  child: Text(val.toString(),
-                                      style: const TextStyle(color: _textPri, fontSize: 14),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
+
+                        if (empty) {
+                          return const DataCell(
+                            Text('—', style: TextStyle(color: _textMut, fontSize: 14)),
+                          );
+                        }
+
+                        // ─── CÉLULA DE IMAGEM ──────────────────────────────
+                        if (_isImagem(val?.toString())) {
+                          return DataCell(
+                            GestureDetector(
+                              onTap: () => _verImagemFullscreen(_urlImagem(val.toString())),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Image.network(
+                                    _urlImagem(val.toString()),
+                                    height: 44,
+                                    width: 64,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.broken_image_rounded, color: _textMut, size: 18),
+                                        SizedBox(width: 4),
+                                        Text('Erro', style: TextStyle(color: _textMut, fontSize: 12)),
+                                      ],
+                                    ),
+                                    loadingBuilder: (_, child, progress) => progress == null
+                                        ? child
+                                        : const SizedBox(
+                                            width: 64,
+                                            height: 44,
+                                            child: Center(
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                color: _accent,
+                                              ),
+                                            ),
+                                          ),
+                                  ),
                                 ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // ─── CÉLULA DE TEXTO NORMAL ────────────────────────
+                        return DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 200),
+                            child: Text(
+                              val.toString(),
+                              style: const TextStyle(color: _textPri, fontSize: 14),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         );
                       }).toList(),
                     );
