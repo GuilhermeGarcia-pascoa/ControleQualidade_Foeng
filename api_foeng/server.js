@@ -32,12 +32,11 @@ const upload = multer({
 });
 
 const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '',
+  host: process.env.DB_HOST || 'FOpanel-mysql',
+  user: 'foengIT',
+  password: 'ITpass',
   database: 'foeng_db',
 };
-
 // ─── LOGIN ───────────────────────────────────────────────
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;

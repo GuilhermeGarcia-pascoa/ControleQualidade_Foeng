@@ -10,13 +10,19 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   DatabaseHelper._init();
 
-  String get baseUrl {
-    if (kIsWeb) return 'http://localhost:3000/api';
+String get baseUrl {
+    // Substitua '192.168.1.XX' pelo IP real do seu servidor/NAS
+    const String serverIp = '192.168.1.246'; 
+
+    if (kIsWeb) return 'http://$serverIp:3000/api';
+    
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return 'http://10.0.2.2:3000/api';
+        return 'http://$serverIp:3000/api';
+      case TargetPlatform.iOS:
+        return 'http://$serverIp:3000/api';
       default:
-        return 'http://localhost:3000/api';
+        return 'http://$serverIp:3000/api';
     }
   }
 
@@ -207,57 +213,50 @@ Future<bool> apagarProjeto(int projetoId) async {
 Future<bool> inserirRegisto(Map<String, dynamic> dados) async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    final baseUrl = prefs.getString('server_url') ?? 'http://localhost:3000';
+    
+    // ✅ CORREÇÃO: Removido o '/api' pois o baseUrl já o tem
+    final uri = Uri.parse('$baseUrl/registos'); 
+    
     final utilizadorId = prefs.getInt('utilizador_id') ?? 1;
-
     final noId = dados['no_id'];
     final dadosFormulario = Map<String, dynamic>.from(dados['dados']);
 
-    // Separar fotos dos restantes campos
     final Map<String, String> fotos = {};
     final Map<String, dynamic> dadosSemFotos = {};
 
     for (final entry in dadosFormulario.entries) {
       final valor = entry.value;
       if (valor is String && valor.startsWith('base64:')) {
-        fotos[entry.key] = valor; // guardar para enviar como ficheiro
+        fotos[entry.key] = valor;
       } else {
         dadosSemFotos[entry.key] = valor;
       }
     }
 
-    // Criar request multipart
-    final uri = Uri.parse('$baseUrl/api/registos');
+    // Criar request multipart usando a 'uri' definida acima
     final request = http.MultipartRequest('POST', uri);
 
-    // Campos de texto
     request.fields['no_id'] = noId.toString();
     request.fields['utilizador_id'] = utilizadorId.toString();
     request.fields['dados_json'] = jsonEncode(dadosSemFotos);
 
-    // Adicionar cada foto como ficheiro
     for (final entry in fotos.entries) {
       final nomeCampo = entry.key;
       final base64Str = entry.value.replaceFirst('base64:', '');
       final bytes = base64Decode(base64Str);
 
       request.files.add(http.MultipartFile.fromBytes(
-        nomeCampo, // nome do campo = nome do campo dinâmico
+        nomeCampo,
         bytes,
         filename: '${nomeCampo}_${DateTime.now().millisecondsSinceEpoch}.jpg',
         contentType: MediaType('image', 'jpeg'),
       ));
     }
 
-    print('📤 ENVIANDO REGISTO MULTIPART');
-    print('no_id: $noId | fotos: ${fotos.keys.toList()}');
+    print('📤 ENVIANDO REGISTO PARA: $uri');
 
-    final streamedResponse = await request.send()
-        .timeout(const Duration(seconds: 30));
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
     final response = await http.Response.fromStream(streamedResponse);
-
-    print('📥 Status: ${response.statusCode}');
-    print('📥 Body: ${response.body}');
 
     final json = jsonDecode(response.body);
     return json['success'] == true;
