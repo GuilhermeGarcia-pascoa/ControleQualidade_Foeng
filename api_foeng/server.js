@@ -32,13 +32,14 @@ const upload = multer({
   },
 });
 
+islocalhost = true;
 
-const dbConfig = {
-  /*host: process.env.DB_HOST || 'FOpanel-mysql',
+const dbConfig = !islocalhost ? {
+  host: process.env.DB_HOST || 'FOpanel-mysql',
   user: 'foengIT',
   password: 'ITpass',
   database: 'foeng_db',
-  */
+} : {
   host: 'localhost',
   user: 'root',
   password: 'Admin@123+',

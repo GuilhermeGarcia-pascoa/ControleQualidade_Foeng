@@ -10,9 +10,17 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   DatabaseHelper._init();
 
+bool islocalhost = true;
+
 String get baseUrl {
-    // Substitua '192.168.1.XX' pelo IP real do seu servidor/NAS
-    const String serverIp = 'localhost'; 
+
+  const String serverIp = "";
+
+  if(islocalhost) {
+    String serverIp = 'localhost';
+  } else {
+    String serverIp = '192.168.1.246';
+  }
 
     if (kIsWeb) return 'http://$serverIp:3000/api';
     

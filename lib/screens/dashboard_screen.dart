@@ -22,7 +22,6 @@ class _C {
   static const textMuted  = Color(0xFF484F58);
   static const danger     = Color(0xFFF85149);
   static const dangerDim  = Color(0x20F85149);
-  static const success    = Color(0xFF3FB950);
   static const warning    = Color(0xFFD29922);
 }
 
@@ -55,7 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     _fabAnim.dispose();
     super.dispose();
   }
-  
+
   void _loadProjetos() async {
     setState(() => _loading = true);
     List<Projeto> data;
