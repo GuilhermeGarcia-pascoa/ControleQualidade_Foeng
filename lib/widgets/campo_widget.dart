@@ -48,11 +48,11 @@ class _CampoWidgetState extends State<CampoWidget> {
             suffix != null ? Icon(suffix, color: _C.textSec, size: 18) : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: _C.border),
+          borderSide: const BorderSide(color: _C.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: _C.border),
+          borderSide: const BorderSide(color: _C.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -73,12 +73,10 @@ class _CampoWidgetState extends State<CampoWidget> {
               onPrimary: Colors.white,
               surface: Color(0xFF1C2330),
               onSurface: _C.textPri,
-              background: Color(0xFF161B22),
             ),
-            dialogBackgroundColor: const Color(0xFF161B22),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(foregroundColor: _C.accent),
-            ),
+            ), dialogTheme: DialogThemeData(backgroundColor: const Color(0xFF161B22)),
           ),
           child: child!,
         ),
@@ -112,7 +110,7 @@ class _CampoWidgetState extends State<CampoWidget> {
             canvasColor: const Color(0xFF1C2330),
           ),
           child: DropdownButtonFormField<String>(
-            value: _selectedValue,
+            initialValue: _selectedValue,
             isExpanded: true,
             icon: const Icon(Icons.keyboard_arrow_down_rounded,
                 color: _C.textSec, size: 20),
@@ -192,11 +190,11 @@ class _CampoWidgetState extends State<CampoWidget> {
                       setState(() => _selectedDate = null);
                       widget.onValueChanged(widget.campo.nomeCampo, null);
                     },
-                    child: Icon(Icons.close_rounded,
+                    child: const Icon(Icons.close_rounded,
                         color: _C.textMuted, size: 16),
                   )
                 else
-                  Icon(Icons.keyboard_arrow_down_rounded,
+                  const Icon(Icons.keyboard_arrow_down_rounded,
                       color: _C.textSec, size: 18),
               ],
             ),
@@ -276,7 +274,7 @@ class _CampoWidgetState extends State<CampoWidget> {
                           widget.onValueChanged(
                               widget.campo.nomeCampo, null);
                         },
-                        child: Icon(Icons.close_rounded,
+                        child: const Icon(Icons.close_rounded,
                             color: _C.textMuted, size: 16),
                       ),
                     ],

@@ -1,16 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
-
-const Color _bg      = Color(0xFF0D1117);
-const Color _surface = Color(0xFF161B22);
-const Color _alt     = Color(0xFF1C2330);
-const Color _border  = Color(0xFF30363D);
-const Color _accent  = Color(0xFF00C2A8);
-const Color _textPri = Color(0xFFE6EDF3);
-const Color _textSec = Color(0xFF8B949E);
-const Color _textMut = Color(0xFF484F58);
-const Color _danger  = Color(0xFFF85149);
+import 'dashboard_screen.dart'; // Importante para aceder ao AppTheme
 
 class MostrarDadosScreen extends StatefulWidget {
   final int noId;
@@ -66,9 +57,8 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Erro: $e'),
-        backgroundColor: _danger,
+        backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));
     }
   }
@@ -149,256 +139,223 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
          lower.endsWith('.jpeg') ||
          lower.endsWith('.png') ||
          lower.endsWith('.gif') ||
-         lower.endsWith('.webp'))) return true;
+         lower.endsWith('.webp'))) {
+      return true;
+    }
     return false;
   }
 
   String _urlImagem(String caminho) {
     if (caminho.startsWith('http')) return caminho;
-    // Remove o '/api' do baseUrl para chegar à raiz do servidor
     final base = DatabaseHelper.instance.baseUrl.replaceFirst('/api', '');
     return '$base$caminho';
   }
 
   void _verImagemFullscreen(String url) {
-  showDialog(
-    context: context,
-    builder: (_) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(16),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: Image.network(
-                url,
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.high,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 200,
-                  height: 200,
-                  color: _surface,
-                  child: const Center(
-                    child: Icon(Icons.broken_image_rounded, color: _textMut, size: 48),
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 200,
+                    height: 200,
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    child: const Center(
+                      child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                    ),
                   ),
-                ),
-                loadingBuilder: (_, child, progress) => progress == null
-                    ? child
-                    : Container(
-                        width: 200,
-                        height: 200,
-                        color: _surface,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            value: progress.expectedTotalBytes != null
-                                ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
-                                : null,
-                            color: _accent,
-                            strokeWidth: 2,
-                          ),
+                  loadingBuilder: (_, child, progress) => progress == null
+                      ? child
+                      : Container(
+                          width: 200,
+                          height: 200,
+                          color: Theme.of(context).colorScheme.surfaceVariant,
+                          child: const Center(child: CircularProgressIndicator()),
                         ),
-                      ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: -12,
-            right: -12,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _border),
                 ),
-                child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              top: -12,
+              right: -12,
+              child: FloatingActionButton.small(
+                onPressed: () => Navigator.pop(context),
+                child: const Icon(Icons.close),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // ─────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: _surface,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: _textPri),
-        title: const Text('Registos',
-            style: TextStyle(color: _textPri, fontSize: 17, fontWeight: FontWeight.w600)),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: _border),
-        ),
+        title: const Text('Registos'),
         actions: [
+          // ─── BOTÃO DE TEMA ───
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: AppTheme.themeMode,
+            builder: (context, currentMode, _) {
+              final isDark = currentMode == ThemeMode.dark || 
+                (currentMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
+              return IconButton(
+                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                onPressed: () {
+                  AppTheme.themeMode.value = isDark ? ThemeMode.light : ThemeMode.dark;
+                },
+              );
+            },
+          ),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: _textSec, size: 20),
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
             onPressed: _carregar,
           ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _accent, strokeWidth: 2.5))
+          ? const Center(child: CircularProgressIndicator())
           : _todos.isEmpty
               ? _buildEmpty()
-              : Column(children: [
-                  _buildFiltros(),
-                  _buildInfoBar(),
-                  Expanded(child: _buildTabela()),
-                ]),
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildFiltros(),
+                    _buildInfoBar(),
+                    const Divider(height: 1),
+                    Expanded(child: _buildTabela()),
+                  ],
+                ),
     );
   }
 
   Widget _buildFiltros() {
-    return Container(
-      color: _surface,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Barra de pesquisa
-        Row(children: [
-          Expanded(
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: _alt,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _border),
-              ),
-              child: Row(children: [
-                const SizedBox(width: 12),
-                const Icon(Icons.search_rounded, color: _textSec, size: 17),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl,
-                    style: const TextStyle(color: _textPri, fontSize: 14),
-                    cursorColor: _accent,
-                    decoration: InputDecoration(
-                      hintText: _filtroColuna != null
-                          ? 'Pesquisar em "$_filtroColuna"...'
-                          : 'Pesquisar...',
-                      hintStyle: const TextStyle(color: _textMut, fontSize: 13),
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                if (_searchCtrl.text.isNotEmpty)
-                  GestureDetector(
-                    onTap: () { _searchCtrl.clear(); },
-                    child: const Padding(
-                      padding: EdgeInsets.only(right: 10),
-                      child: Icon(Icons.close_rounded, color: _textSec, size: 16),
-                    ),
-                  ),
-              ]),
-            ),
-          ),
-          if (_temFiltros) ...[
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _limparFiltros,
-              child: Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: _danger.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _danger.withOpacity(0.4)),
-                ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.filter_alt_off_rounded, color: _danger, size: 15),
-                  SizedBox(width: 5),
-                  Text('Limpar', style: TextStyle(color: _danger, fontSize: 13, fontWeight: FontWeight.w500)),
-                ]),
-              ),
-            ),
-          ],
-        ]),
-
-        // Chips de colunas
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 30,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              _Chip(
-                label: 'Todos',
-                selected: _filtroColuna == null,
-                onTap: () => setState(() { _filtroColuna = null; _aplicarFiltros(); }),
-              ),
-              const SizedBox(width: 6),
-              ..._campos.map((c) {
-                final nome = c['nome'] as String;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: _Chip(
-                    label: nome,
-                    selected: _filtroColuna == nome,
-                    onTap: () => setState(() {
-                      _filtroColuna = _filtroColuna == nome ? null : nome;
-                      _aplicarFiltros();
-                    }),
+              Expanded(
+                child: TextField(
+                  controller: _searchCtrl,
+                  decoration: InputDecoration(
+                    hintText: _filtroColuna != null
+                        ? 'Pesquisar em "$_filtroColuna"...'
+                        : 'Pesquisar em tudo...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => _searchCtrl.clear(),
+                          )
+                        : null,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
                   ),
-                );
-              }),
+                ),
+              ),
+              if (_temFiltros) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _limparFiltros,
+                  icon: const Icon(Icons.filter_alt_off),
+                  label: const Text('Limpar'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                ),
+              ],
             ],
           ),
-        ),
-      ]),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('Todos os campos'),
+                  selected: _filtroColuna == null,
+                  onSelected: (val) => setState(() {
+                    _filtroColuna = null;
+                    _aplicarFiltros();
+                  }),
+                ),
+                const SizedBox(width: 8),
+                ..._campos.map((c) {
+                  final nome = c['nome'] as String;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(nome),
+                      selected: _filtroColuna == nome,
+                      onSelected: (val) => setState(() {
+                        _filtroColuna = _filtroColuna == nome ? null : nome;
+                        _aplicarFiltros();
+                      }),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildInfoBar() {
-    return Container(
-      color: _surface,
-      padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
-      child: Row(children: [
-        Container(width: 3, height: 11, decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(2))),
-        const SizedBox(width: 8),
-        Text(
-          _temFiltros
-              ? '${_filtrados.length} de ${_todos.length} registos'
-              : '${_todos.length} registo${_todos.length != 1 ? 's' : ''}',
-          style: const TextStyle(color: _textSec, fontSize: 12),
-        ),
-        if (_sortColuna != null) ...[
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, size: 16),
           const SizedBox(width: 8),
-          Icon(_sortAsc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-              color: _accent, size: 12),
-          const SizedBox(width: 3),
-          Text('Ordem: "$_sortColuna"',
-              style: const TextStyle(color: _accent, fontSize: 12)),
+          Text(
+            _temFiltros
+                ? 'A mostrar ${_filtrados.length} de ${_todos.length} registos'
+                : 'Total de ${_todos.length} registos',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          if (_sortColuna != null) ...[
+            const Spacer(),
+            Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
+            const SizedBox(width: 4),
+            Text('Ordenado por $_sortColuna', style: const TextStyle(fontSize: 12)),
+          ]
         ],
-      ]),
+      ),
     );
   }
 
   Widget _buildTabela() {
     if (_filtrados.isEmpty) {
       return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.search_off_rounded, size: 36, color: _textMut),
-          const SizedBox(height: 10),
-          const Text('Sem resultados', style: TextStyle(color: _textPri, fontSize: 15, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text('Nenhum registo com "$_filtroBusca"',
-              style: const TextStyle(color: _textSec, fontSize: 13)),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.search_off, size: 48, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text('Sem resultados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Nenhum registo encontrado para "$_filtroBusca"'),
+          ],
+        ),
       );
     }
 
@@ -406,120 +363,75 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
       controller: _scrollV,
       child: SingleChildScrollView(
         controller: _scrollV,
-        physics: const BouncingScrollPhysics(),
         child: LayoutBuilder(
           builder: (ctx, constraints) => Scrollbar(
             controller: _scrollH,
             child: SingleChildScrollView(
               controller: _scrollH,
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
                 child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(_surface),
-                  columnSpacing: 20,
-                  horizontalMargin: 16,
-                  headingRowHeight: 42,
-                  dataRowMinHeight: 56,
-                  dataRowMaxHeight: 56,
-                  dividerThickness: 0.5,
-                  border: TableBorder(
-                    horizontalInside: BorderSide(color: _border, width: 0.5),
-                    top: BorderSide(color: _border, width: 0.5),
-                  ),
+                  showCheckboxColumn: false,
                   columns: _campos.map((c) {
                     final nome = c['nome'] as String;
                     final isSorted = _sortColuna == nome;
                     return DataColumn(
-                      label: GestureDetector(
+                      label: InkWell(
                         onTap: () => _toggleSort(nome),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text(
-                            nome.toUpperCase(),
-                            style: TextStyle(
-                              color: isSorted ? _accent : _textSec,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              nome.toUpperCase(),
+                              style: TextStyle(fontWeight: isSorted ? FontWeight.bold : FontWeight.normal),
                             ),
-                          ),
-                          const SizedBox(width: 3),
-                          Icon(
-                            isSorted
-                                ? (_sortAsc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded)
-                                : Icons.unfold_more_rounded,
-                            size: 12,
-                            color: isSorted ? _accent : _textMut,
-                          ),
-                        ]),
+                            if (isSorted) ...[
+                              const SizedBox(width: 4),
+                              Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
+                            ],
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
-                  rows: _filtrados.asMap().entries.map((entry) {
-                    final dados = _parseDados(entry.value);
+                  rows: _filtrados.map((entry) {
+                    final dados = _parseDados(entry);
                     return DataRow(
-                      color: MaterialStateProperty.resolveWith((states) =>
-                          entry.key.isEven ? Colors.transparent : Colors.white.withOpacity(0.02)),
                       cells: _campos.map((c) {
                         final val = dados[c['nome']];
                         final empty = val == null || val.toString().trim().isEmpty;
 
                         if (empty) {
-                          return const DataCell(
-                            Text('—', style: TextStyle(color: _textMut, fontSize: 14)),
-                          );
+                          return const DataCell(Text('—', style: TextStyle(color: Colors.grey)));
                         }
 
-                        // ─── CÉLULA DE IMAGEM ──────────────────────────────
+                        // ─── CÉLULA DE IMAGEM ───
                         if (_isImagem(val?.toString())) {
                           return DataCell(
                             GestureDetector(
                               onTap: () => _verImagemFullscreen(_urlImagem(val.toString())),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Image.network(
-                                    _urlImagem(val.toString()),
-                                    height: 44,
-                                    width: 64,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.broken_image_rounded, color: _textMut, size: 18),
-                                        SizedBox(width: 4),
-                                        Text('Erro', style: TextStyle(color: _textMut, fontSize: 12)),
-                                      ],
-                                    ),
-                                    loadingBuilder: (_, child, progress) => progress == null
-                                        ? child
-                                        : const SizedBox(
-                                            width: 64,
-                                            height: 44,
-                                            child: Center(
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 1.5,
-                                                color: _accent,
-                                              ),
-                                            ),
-                                          ),
-                                  ),
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Image.network(
+                                  _urlImagem(val.toString()),
+                                  height: 40,
+                                  width: 40,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey),
                                 ),
                               ),
                             ),
                           );
                         }
 
-                        // ─── CÉLULA DE TEXTO NORMAL ────────────────────────
+                        // ─── CÉLULA DE TEXTO NORMAL ───
                         return DataCell(
                           ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 200),
+                            constraints: const BoxConstraints(maxWidth: 250),
                             child: Text(
                               val.toString(),
-                              style: const TextStyle(color: _textPri, fontSize: 14),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -537,46 +449,15 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 60, height: 60,
-          decoration: BoxDecoration(color: _surface, shape: BoxShape.circle, border: Border.all(color: _border)),
-          child: const Icon(Icons.table_view_outlined, size: 26, color: _textMut),
-        ),
-        const SizedBox(height: 14),
-        const Text('Sem registos', style: TextStyle(color: _textPri, fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        const Text('Ainda não existem dados nesta pasta.', style: TextStyle(color: _textSec, fontSize: 13)),
-      ]),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _Chip({required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: selected ? _accent.withOpacity(0.12) : _alt,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? _accent.withOpacity(0.5) : _border),
-        ),
-        child: Text(label,
-            style: TextStyle(
-              color: selected ? _accent : _textSec,
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            )),
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.table_view, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text('Sem registos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Ainda não existem dados submetidos nesta pasta.'),
+        ],
       ),
     );
   }
