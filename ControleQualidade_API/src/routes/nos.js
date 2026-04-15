@@ -1,0 +1,316 @@
+const express = require('express');
+const pool = require('../db/pool');
+const logger = require('../utils/logger');
+
+const router = express.Router();
+
+// ─── OBTER ANCESTRAIS ─────────────────────────────────────
+router.get('/:noId/ancestrais', async (req, res) => {
+  const { noId } = req.params;
+  try {
+    logger.info(`[ancestrais] Obtendo para noId=${noId}`);
+    const ancestrais = [];
+    let idAtual = parseInt(noId);
+
+    while (true) {
+      const [rows] = await pool.query('SELECT * FROM nos WHERE id = ?', [idAtual]);
+      if (rows.length === 0) break;
+      const no = rows[0];
+      if (no.id !== parseInt(noId)) ancestrais.push(no);
+      if (no.pai_id === null) break;
+      idAtual = no.pai_id;
+    }
+
+    logger.success(`[ancestrais] ${ancestrais.length} ancestrais para noId=${noId}`);
+    res.json({ ancestrais });
+  } catch (err) {
+    logger.error('Erro em GET /:noId/ancestrais', err);
+    res.status(500).json({ error: 'Erro interno ao obter ancestrais.' });
+  }
+});
+
+// ─── OBTER DESCENDENTES ───────────────────────────────────
+router.get('/:noId/descendentes', async (req, res) => {
+  const { noId } = req.params;
+  try {
+    const descendentes = [];
+    async function recolherDescendentes(paiId) {
+      const [filhos] = await pool.query('SELECT * FROM nos WHERE pai_id = ?', [paiId]);
+      for (const filho of filhos) {
+        descendentes.push(filho);
+        await recolherDescendentes(filho.id);
+      }
+    }
+    await recolherDescendentes(parseInt(noId));
+    res.json({ descendentes });
+  } catch (err) {
+    logger.error('Erro em GET /:noId/descendentes', err);
+    res.status(500).json({ error: 'Erro interno ao obter descendentes.' });
+  }
+});
+
+// ─── OBTER INFORMAÇÃO DO NÓ ───────────────────────────────
+router.get('/info/:noId', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT id, projeto_id, pai_id, nome FROM nos WHERE id = ?',
+      [req.params.noId]
+    );
+    if (rows.length > 0) {
+      res.json({ success: true, ...rows[0] });
+    } else {
+      res.status(404).json({ success: false });
+    }
+  } catch (error) {
+    logger.error('Erro em GET /info/:noId', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── OBTER TODOS OS NÓS DE UM PROJETO ──────────────────────
+router.get('/:projetoId/todos', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT * FROM nos WHERE projeto_id = ? ORDER BY nome ASC',
+      [req.params.projetoId]
+    );
+    res.json({ success: true, nos: rows });
+  } catch (error) {
+    logger.error('Erro em GET /:projetoId/todos', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── PARTILHADOS ──────────────────────────────────────────
+router.get('/partilhados/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    logger.info(`[partilhados] Obtendo para userId=${userId}`);
+
+    const [nos] = await pool.execute(
+      `SELECT n.id, n.projeto_id, n.pai_id, n.nome, p.nome AS projeto_nome
+       FROM utilizador_no un
+       JOIN nos n ON n.id = un.no_id
+       JOIN projetos p ON p.id = n.projeto_id
+       WHERE un.utilizador_id = ?
+       ORDER BY p.nome ASC, n.nome ASC`,
+      [userId]
+    );
+
+    async function getBreadcrumb(paiId) {
+      const breadcrumb = [];
+      let atual = paiId;
+      while (atual !== null && atual !== undefined) {
+        const [rows] = await pool.execute('SELECT id, nome, pai_id FROM nos WHERE id = ?', [atual]);
+        if (rows.length === 0) break;
+        breadcrumb.unshift(rows[0].nome);
+        atual = rows[0].pai_id;
+      }
+      return breadcrumb;
+    }
+
+    const resultado = [];
+    for (const no of nos) {
+      const breadcrumb = await getBreadcrumb(no.pai_id);
+      resultado.push({
+        id: no.id,
+        nome: no.nome,
+        projeto_id: no.projeto_id,
+        projeto_nome: no.projeto_nome,
+        pai_id: no.pai_id,
+        breadcrumb,
+      });
+    }
+
+    logger.success(`[partilhados] ${resultado.length} pastas para userId=${userId}`);
+    res.json({ success: true, nos: resultado });
+  } catch (error) {
+    logger.error('Erro em GET /partilhados/:userId', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── CRIAR NÓ ──────────────────────────────────────────────
+router.post('/', async (req, res) => {
+  const { projeto_id, pai_id, nome } = req.body;
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO nos (projeto_id, pai_id, nome) VALUES (?, ?, ?)',
+      [projeto_id, pai_id || null, nome]
+    );
+    logger.success(`Nó criado: ${nome} (ID: ${result.insertId})`);
+    res.json({ success: true, id: result.insertId });
+  } catch (error) {
+    logger.error('Erro em POST /nos', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── ATUALIZAR NÓ ─────────────────────────────────────────
+router.put('/:id', async (req, res) => {
+  const { nome } = req.body;
+  try {
+    await pool.execute('UPDATE nos SET nome = ? WHERE id = ?', [nome, req.params.id]);
+    logger.success(`Nó ${req.params.id} atualizado`);
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Erro em PUT /nos/:id', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── MOVER NÓ ─────────────────────────────────────────────
+router.put('/:id/mover', async (req, res) => {
+  const { pai_id } = req.body;
+  try {
+    await pool.execute('UPDATE nos SET pai_id = ? WHERE id = ?', [pai_id || null, req.params.id]);
+    logger.success(`Nó ${req.params.id} movido`);
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Erro em PUT /nos/:id/mover', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── DELETAR NÓ ───────────────────────────────────────────
+router.delete('/:id', async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM nos WHERE id = ?', [req.params.id]);
+    logger.success(`Nó ${req.params.id} eliminado`);
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Erro em DELETE /nos/:id', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── COPIAR NÓ ─────────────────────────────────────────────
+router.post('/:id/copiar', async (req, res) => {
+  const { novo_pai_id, novo_projeto_id, incluir_registos, incluir_subpastas, incluir_campos } = req.body;
+  try {
+    const [nos] = await pool.execute('SELECT projeto_id FROM nos WHERE id = ?', [req.params.id]);
+    if (nos.length === 0) return res.status(404).json({ success: false, error: 'Nó não encontrado' });
+    
+    const projetoId = novo_projeto_id || nos[0].projeto_id;
+    const copiarSubpastas = incluir_subpastas !== false;
+    const copiarCampos = incluir_campos !== false;
+    const copiarRegistos = incluir_registos === true;
+    
+    await copiarNoRecursivo(pool, req.params.id, novo_pai_id || null, projetoId, copiarRegistos, copiarSubpastas, copiarCampos, true);
+    logger.success(`Nó ${req.params.id} copiado`);
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Erro em POST /nos/:id/copiar', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── NÓS COM ACESSO ───────────────────────────────────────
+router.get('/:projetoId/acesso/:userId', async (req, res) => {
+  const { projetoId, userId } = req.params;
+  try {
+    const [diretos] = await pool.query(
+      `SELECT n.id FROM utilizador_no un
+       JOIN nos n ON n.id = un.no_id
+       WHERE un.utilizador_id = ? AND n.projeto_id = ?`,
+      [userId, projetoId]
+    );
+    const idsComAcesso = new Set(diretos.map(r => r.id));
+
+    async function adicionarDescendentes(paiId) {
+      const [filhos] = await pool.query('SELECT id FROM nos WHERE pai_id = ?', [paiId]);
+      for (const filho of filhos) {
+        idsComAcesso.add(filho.id);
+        await adicionarDescendentes(filho.id);
+      }
+    }
+    for (const { id } of diretos) await adicionarDescendentes(id);
+
+    async function adicionarAncestral(noId) {
+      const [rows] = await pool.query('SELECT id, pai_id FROM nos WHERE id = ?', [noId]);
+      if (rows.length > 0 && rows[0].pai_id !== null) {
+        idsComAcesso.add(rows[0].pai_id);
+        await adicionarAncestral(rows[0].pai_id);
+      }
+    }
+    for (const { id } of diretos) await adicionarAncestral(id);
+
+    res.json({ success: true, nos_com_acesso: [...idsComAcesso] });
+  } catch (err) {
+    logger.error('Erro em GET /:projetoId/acesso/:userId', err);
+    res.status(500).json({ error: 'Erro interno ao obter acessos.' });
+  }
+});
+
+// ─── NÓS POR PROJETO (genérica) ────────────────────────────
+router.get('/:projetoId', async (req, res) => {
+  const { projetoId } = req.params;
+  const { pai_id } = req.query;
+  try {
+    let rows;
+    if (pai_id === undefined || pai_id === 'null' || pai_id === '') {
+      [rows] = await pool.execute(
+        'SELECT * FROM nos WHERE projeto_id = ? AND pai_id IS NULL ORDER BY nome ASC',
+        [projetoId]
+      );
+    } else {
+      [rows] = await pool.execute(
+        'SELECT * FROM nos WHERE projeto_id = ? AND pai_id = ? ORDER BY nome ASC',
+        [projetoId, pai_id]
+      );
+    }
+    res.json({ success: true, nos: rows });
+  } catch (error) {
+    logger.error('Erro em GET /:projetoId', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ────────────────────────────────────────────────────────────
+// FUNÇÃO AUXILIAR
+// ────────────────────────────────────────────────────────────
+
+async function copiarNoRecursivo(conn, noId, novoPaiId, novoProjetoId, incluirRegistos, incluirSubpastas, incluirCampos, isPrimeiroNo = false) {
+  const [nos] = await conn.execute('SELECT * FROM nos WHERE id = ?', [noId]);
+  if (nos.length === 0) return;
+  const no = nos[0];
+  const nomeFinal = isPrimeiroNo ? `${no.nome} (Cópia)` : no.nome;
+
+  const [res] = await conn.execute(
+    'INSERT INTO nos (projeto_id, pai_id, nome) VALUES (?, ?, ?)',
+    [novoProjetoId, novoPaiId, nomeFinal]
+  );
+  const novoNoId = res.insertId;
+
+  if (incluirCampos) {
+    const [campos] = await conn.execute(
+      'SELECT * FROM campos_dinamicos WHERE no_id = ? ORDER BY ordem ASC',
+      [noId]
+    );
+    for (const campo of campos) {
+      await conn.execute(
+        'INSERT INTO campos_dinamicos (no_id, nome_campo, tipo_campo, opcoes, obrigatorio, ordem) VALUES (?, ?, ?, ?, ?, ?)',
+        [novoNoId, campo.nome_campo, campo.tipo_campo, campo.opcoes || null, campo.obrigatorio, campo.ordem]
+      );
+    }
+  }
+
+  if (incluirRegistos) {
+    const [regs] = await conn.execute('SELECT * FROM registos WHERE no_id = ?', [noId]);
+    for (const r of regs) {
+      await conn.execute(
+        'INSERT INTO registos (no_id, utilizador_id, dados) VALUES (?, ?, ?)',
+        [novoNoId, r.utilizador_id, r.dados]
+      );
+    }
+  }
+
+  if (incluirSubpastas) {
+    const [filhos] = await conn.execute('SELECT id FROM nos WHERE pai_id = ?', [noId]);
+    for (const f of filhos) {
+      await copiarNoRecursivo(conn, f.id, novoNoId, novoProjetoId, incluirRegistos, incluirSubpastas, incluirCampos, false);
+    }
+  }
+}
+
+module.exports = router;

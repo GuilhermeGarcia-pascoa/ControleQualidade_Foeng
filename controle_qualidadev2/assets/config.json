@@ -1,0 +1,24 @@
+{
+  "isLocalhost": true,
+  "meuIpDoPC": "192.168.1.65",
+  "port": 3000,
+  "dbConfig": {
+    "localhost": {
+      "host": "localhost",
+      "user": "root",
+      "password": "Admin@123+",
+      "database": "foeng_db"
+    },
+    "production": {
+      "host": "FOpanel-mysql",
+      "user": "foengIT",
+      "password": "ITpass",
+      "database": "foeng_db"
+    }
+  },
+  "baseUrl": {
+    "web": "http://localhost:3000/api",
+    "localhost": "http://192.168.1.65:3000/api",
+    "production": "https://o-teu-dominio-real.com/api"
+  }
+}

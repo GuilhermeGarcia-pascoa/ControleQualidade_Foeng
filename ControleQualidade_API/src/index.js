@@ -1,0 +1,63 @@
+const express = require('express');
+const cors = require('cors');
+const compression = require('compression');
+const helmet = require('helmet');
+const morgan = require('morgan');
+require('dotenv').config();
+
+const logger = require('./utils/logger');
+const errorHandler = require('./utils/errorHandler');
+
+// Rotas
+const authRoutes = require('./routes/auth');
+const utilizadoresRoutes = require('./routes/utilizadores');
+const projetosRoutes = require('./routes/projetos');
+const nosRoutes = require('./routes/nos');
+const camposRoutes = require('./routes/campos');
+const registosRoutes = require('./routes/registos');
+const utilizadorProjetoRoutes = require('./routes/utilizador_projeto');
+const utilizadorNoRoutes = require('./routes/utilizador_no');
+const databaseRoutes = require('./routes/database');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ─── MIDDLEWARES ───────────────────────────────────────────
+app.use(helmet());
+app.use(compression());
+app.use(cors());
+app.use(morgan('combined'));
+app.use(express.json({ limit: '10mb' }));
+app.use('/uploads', express.static('uploads'));
+
+// ─── ROTAS ─────────────────────────────────────────────────
+app.use('/api/login', authRoutes);
+app.use('/api/utilizadores', utilizadoresRoutes);
+app.use('/api/projetos', projetosRoutes);
+app.use('/api/nos', nosRoutes);
+app.use('/api/campos', camposRoutes);
+app.use('/api/registos', registosRoutes);
+app.use('/api/utilizador_projeto', utilizadorProjetoRoutes);
+app.use('/api/utilizador_no', utilizadorNoRoutes);
+app.use('/api/database', databaseRoutes);
+
+// ─── ROTA DE HEALTH CHECK ──────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, message: 'API is running', timestamp: new Date().toISOString() });
+});
+
+// ─── TRATAMENTO DE ERROS ───────────────────────────────────
+app.use((err, req, res, next) => {
+  errorHandler(err, req, res);
+});
+
+// ─── ROTA 404 ──────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ success: false, error: 'Rota não encontrada' });
+});
+
+// ─── INICIAR SERVIDOR ──────────────────────────────────────
+app.listen(PORT, '0.0.0.0', () => {
+  logger.success(`🚀 API rodando em http://0.0.0.0:${PORT}`);
+  logger.info(`Health check: http://localhost:${PORT}/api/health`);
+});
