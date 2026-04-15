@@ -47,8 +47,7 @@ ControleQualidade_Foeng/
 │   │   └── database_helper.dart         # Cliente HTTP para a API REST
 │   └── utils/
 │       └── session.dart                 # Gestão de sessão com SharedPreferences
-├── api_foeng/
-│   └── server.js                        # API REST em Express + MySQL
+├── ../ControleQualidade_API/            # API REST em Express + MySQL
 ├── android/                             # Configuração Android
 ├── ios/                                 # Configuração iOS
 └── pubspec.yaml
@@ -97,20 +96,11 @@ Cria a base de dados MySQL e as tabelas necessárias (`utilizadores`, `projetos`
 ### 2. API (Backend)
 
 ```bash
-cd api_foeng
+cd ../ControleQualidade_API
 npm install
 ```
 
-Edita o ficheiro `server.js` e substitui a password da base de dados:
-
-```js
-const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: 'A_TUA_PASSWORD',   // <-- alterar aqui
-  database: 'foeng_db'
-};
-```
+Configura as credenciais da base de dados no ficheiro `.env`.
 
 Inicia o servidor:
 
@@ -143,11 +133,7 @@ flutter run
 
 | Pacote | Versão | Uso |
 |---|---|---|
-| `sqflite` | ^2.3.0 | (reservado para uso local futuro) |
 | `http` | ^1.6.0 | Chamadas à API REST |
-| `shared_preferences` | ^2.2.2 | Persistência de sessão |
+| `shared_preferences` | ^2.5.5 | Persistência de sessão |
 | `image_picker` | ^1.0.7 | Captura de imagens nos registos |
 | `intl` | ^0.19.0 | Formatação de datas |
-| `path_provider` | ^2.1.2 | Acesso ao sistema de ficheiros |
-| `crypto` | ^3.0.3 | Hash de passwords |
-| `path` | ^1.8.3 | Manipulação de caminhos |

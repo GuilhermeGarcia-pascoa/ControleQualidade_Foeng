@@ -14,7 +14,6 @@ class DatabaseHelper {
   // URL DA API — CONFIGURADA EM lib/config/app_config.dart
   String get _baseUrl => AppConfig.apiBaseUrl;
 
-  String get baseUrl => _baseUrl;
 
   // ─── LOGIN ───────────────────────────────────────────────
   Future<Utilizador?> login(String email, String password) async {

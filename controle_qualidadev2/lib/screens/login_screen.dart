@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../database/database_helper.dart';
 import '../utils/session.dart';
 import '../theme/app_theme.dart';
@@ -60,14 +61,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
-    final user = await DatabaseHelper.instance.login(emailC.text.trim(), passC.text.trim());
+    final user = await DatabaseHelper.instance
+        .login(emailC.text.trim(), passC.text.trim());
 
     if (!mounted) return;
 
     if (user != null) {
       await Session.saveUser(user.id!, user.perfil);
       // Carrega o tema guardado na base de dados antes de abrir o dashboard
-      await AppTheme.loadTheme(DatabaseHelper.instance.baseUrl);
+      await AppTheme.loadTheme();
       
       if (!mounted) return;
       Navigator.pushReplacement(

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../config/app_config.dart';
 import '../database/database_helper.dart';
 import '../models/models.dart';
 import 'preencher_tabela_screen.dart';
@@ -159,8 +160,7 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
 
   String _urlImagem(String caminho) {
     if (caminho.startsWith('http')) return caminho;
-    final base = DatabaseHelper.instance.baseUrl.replaceFirst('/api', '');
-    return '$base$caminho';
+    return '${AppConfig.serverBaseUrl}$caminho';
   }
 
   void _verImagemFullscreen(String url) {

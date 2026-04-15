@@ -680,8 +680,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 title: Text(isDark ? "Modo Claro" : "Modo Escuro"),
                 onTap: () {
                   Navigator.of(context).pop();
-                  AppTheme.changeTheme(
-                      !isDark, DatabaseHelper.instance.baseUrl);
+                  AppTheme.changeTheme(!isDark);
                 },
               );
             },

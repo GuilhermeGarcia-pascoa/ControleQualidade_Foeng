@@ -3,7 +3,6 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'utils/session.dart';
 import 'theme/app_theme.dart';
-import 'database/database_helper.dart';
 import 'config/app_config.dart';
 
 void main() async {
@@ -16,7 +15,7 @@ void main() async {
 
   // Carrega o tema da API só se houver sessão ativa
   if (user != null) {
-    await AppTheme.loadTheme(DatabaseHelper.instance.baseUrl);
+    await AppTheme.loadTheme();
   }
 
   runApp(MyApp(initialUser: user));
