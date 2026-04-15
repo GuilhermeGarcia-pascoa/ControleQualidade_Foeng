@@ -7,7 +7,7 @@ class AppConfig {
 
   // ─── API CONFIGURATION ─────────────────────────────────
   /// IP do PC na rede local (ex: 192.168.1.65)
-  static const String localIp = '192.168.1.65';
+  static const String localIp = '192.168.1.66';
 
   /// Porta do servidor Node.js
   static const int apiPort = 3000;

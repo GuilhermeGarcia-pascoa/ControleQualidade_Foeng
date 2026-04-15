@@ -19,11 +19,11 @@ class ApiConfig {
       // Configuração padrão em caso de erro
       _config = {
         'isLocalhost': true,
-        'meuIpDoPC': '192.168.1.87',
+        'meuIpDoPC': '192.168.1.66',
         'port': 3000,
         'baseUrl': {
           'web': 'http://localhost:3000/api',
-          'localhost': 'http://192.168.1.87:3000/api',
+          'localhost': 'http://192.168.1.66:3000/api',
           'production': 'https://o-teu-dominio-real.com/api'
         }
       };

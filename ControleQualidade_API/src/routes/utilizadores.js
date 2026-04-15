@@ -1,10 +1,44 @@
 const express = require('express');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const { md5 } = require('../utils/hash');
 
 const router = express.Router();
 
-// ─── UTILIZADORES ─────────────────────────────────────────
+// ─── REGISTO ──────────────────────────────────────────────
+router.post('/registar', async (req, res) => {
+  const { nome, email, password, perfil } = req.body;
+
+  if (!nome || !email || !password) {
+    return res.status(400).json({ success: false, message: 'Nome, email e password são obrigatórios' });
+  }
+
+  try {
+    const [existe] = await pool.execute(
+      'SELECT id FROM utilizadores WHERE email = ?',
+      [email]
+    );
+
+    if (existe.length > 0) {
+      return res.status(409).json({ success: false, message: 'Email já registado' });
+    }
+
+    const hashedPassword = md5(password);
+
+    const [result] = await pool.execute(
+      'INSERT INTO utilizadores (nome, email, password, perfil) VALUES (?, ?, ?, ?)',
+      [nome, email, hashedPassword, perfil || 'utilizador']
+    );
+
+    logger.success(`Novo utilizador registado: ${email}`);
+    res.status(201).json({ success: true, id: result.insertId });
+  } catch (error) {
+    logger.error('Erro em POST /utilizadores/registar', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── PESQUISAR ────────────────────────────────────────────
 router.get('/pesquisar/:texto', async (req, res) => {
   try {
     const texto = `%${req.params.texto}%`;
@@ -20,6 +54,7 @@ router.get('/pesquisar/:texto', async (req, res) => {
   }
 });
 
+// ─── BUSCAR POR EMAIL ─────────────────────────────────────
 router.get('/email/:email', async (req, res) => {
   try {
     const [rows] = await pool.execute(
@@ -37,6 +72,7 @@ router.get('/email/:email', async (req, res) => {
   }
 });
 
+// ─── TEMA ─────────────────────────────────────────────────
 router.get('/:id/tema', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT tema_escuro FROM utilizadores WHERE id = ?', [req.params.id]);
