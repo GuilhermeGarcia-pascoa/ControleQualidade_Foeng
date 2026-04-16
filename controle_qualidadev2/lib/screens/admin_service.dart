@@ -111,6 +111,22 @@ class AdminService {
     _tratar(r);
   }
 
+  // ── PUT /api/utilizadores/:id ────────────────────────────────────────
+  Future<UtilizadorAdmin> editarUtilizador(
+    int id, {
+    required String nome,
+    required String email,
+    required String role,
+  }) async {
+    final r = await http.put(
+      Uri.parse('$baseUrl/api/utilizadores/$id'),
+      headers: await _headers(),
+      body: jsonEncode({'nome': nome, 'email': email, 'perfil': role}),
+    );
+    final body = _tratar(r);
+    return UtilizadorAdmin.fromJson(body['utilizador'] as Map<String, dynamic>);
+  }
+
   // ── DELETE /api/utilizadores/:id ───────────────────────────────────────
   Future<void> apagarUtilizador(int id) async {
     final r = await http.delete(
