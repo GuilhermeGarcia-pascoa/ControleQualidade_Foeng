@@ -6,6 +6,7 @@ import '../utils/toast.dart';
 import '../utils/session.dart';
 import 'gerir_membros_screen.dart';
 import '../theme/app_theme.dart';
+import 'admin_panel_screen.dart'; // ← NOVO
 
 class DashboardScreen extends StatefulWidget {
   final String perfil;
@@ -234,18 +235,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // ─── LOGOUT CORRIGIDO ────────────────────────────────────────
-  // CORREÇÃO PRINCIPAL:
-  //   1. Fecha o drawer antes de qualquer async
-  //   2. Chama Session.logout() para limpar cache E disco
-  //   3. Usa Navigator.pushNamedAndRemoveUntil com fallback robusto
+  // ─── LOGOUT ──────────────────────────────────────────────────
   void _confirmarLogout(BuildContext drawerContext) async {
-    // Fecha o drawer primeiro (síncrono)
     Navigator.of(drawerContext).pop();
-
-    // Pequena pausa para a animação do drawer terminar
     await Future.delayed(const Duration(milliseconds: 300));
-
     if (!mounted) return;
 
     final confirm = await showDialog<bool>(
@@ -266,13 +259,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
 
     if (confirm == true && mounted) {
-      // 1. Limpa a sessão (cache em memória + SharedPreferences)
       await Session.logout();
-
       if (!mounted) return;
-
-      // 2. Navega para o ecrã inicial removendo toda a stack
-      // Tenta rota nomeada '/' primeiro; se não existir, usa o MaterialApp root
       Navigator.of(context, rootNavigator: true)
           .pushNamedAndRemoveUntil('/', (route) => false);
     }
@@ -656,6 +644,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ─── DRAWER ───────────────────────────────────────────────
   Widget _buildDrawer(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isAdmin = widget.perfil == 'admin';
 
     return Drawer(
       child: Column(
@@ -671,6 +660,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             accountEmail: const Text("Controle de Qualidade"),
           ),
+
+          // ── Tema ──────────────────────────────────────────
           ValueListenableBuilder<ThemeMode>(
             valueListenable: AppTheme.themeMode,
             builder: (context, mode, _) {
@@ -685,8 +676,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
             },
           ),
+
+          // ── Painel Admin (só visível para admins) ─────────
+          if (isAdmin) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(
+                Icons.admin_panel_settings_rounded,
+                color: colorScheme.primary,
+              ),
+              title: Text(
+                'Painel Admin',
+                style: TextStyle(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: const Text(
+                'Gerir utilizadores',
+                style: TextStyle(fontSize: 12),
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: colorScheme.primary,
+                size: 20,
+              ),
+              onTap: () {
+                Navigator.of(context).pop(); // fecha o drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AdminPanelScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 1),
+          ],
+
           const Spacer(),
           const Divider(),
+
+          // ── Logout ────────────────────────────────────────
           Builder(
             builder: (drawerContext) => ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class AppConfig {
   static const String apiScheme = 'http';
-  static const String apiHost = '192.168.1.66';
+  static const String apiHost = '192.168.1.63';
   static const int apiPort = 3000;
   static const String apiPath = '/api';
   static const bool enableAppLogs = true;

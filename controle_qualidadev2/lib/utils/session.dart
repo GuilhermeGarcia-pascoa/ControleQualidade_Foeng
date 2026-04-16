@@ -6,6 +6,7 @@ class Session {
   // ─── Cache em memória ──────────────────────────────────────────
   static int? _cachedId;
   static String? _cachedPerfil;
+  static String? _cachedToken;
 
   // ─── GUARDAR ──────────────────────────────────────────────────
   static Future<void> saveUser(int id, String perfil) async {
@@ -15,6 +16,13 @@ class Session {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('userId', id);
     await prefs.setString('perfil', perfil);
+  }
+
+  static Future<void> saveToken(String token) async {
+    _cachedToken = token;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token);
   }
 
   // ─── LER (usa cache se disponível) ────────────────────────────
@@ -58,6 +66,16 @@ class Session {
     return perfil;
   }
 
+  // ─── OBTER TOKEN ─────────────────────────────────────────────
+  static Future<String?> getToken() async {
+    if (_cachedToken != null) return _cachedToken;
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    _cachedToken = token;
+    return token;
+  }
+
   // ─── VERIFICAR SE ESTÁ AUTENTICADO ────────────────────────────
   static Future<bool> isLoggedIn() async {
     final user = await getUser();
@@ -69,6 +87,7 @@ class Session {
     // Limpa cache em memória primeiro
     _cachedId = null;
     _cachedPerfil = null;
+    _cachedToken = null;
 
     // Limpa dados persistidos
     final prefs = await SharedPreferences.getInstance();
