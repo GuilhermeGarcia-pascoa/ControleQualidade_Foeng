@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../utils/session.dart';
 
 // ── Modelo ────────────────────────────────────────────────────────────────────
@@ -50,13 +51,14 @@ class AdminService {
   AdminService._();
   static final AdminService instance = AdminService._();
 
-  // Altera este valor conforme o ambiente (dev/prod).
-  // Em Android Emulator usa 10.0.2.2; em dispositivo físico usa o IP da máquina.
-  static const String baseUrl = 'http://192.168.1.63:3000';
+  // ── Obter a URL base a partir da configuração ──────────────────────────────────
+  // Em Android Emulator redirection: 10.0.2.2
+  // Em dispositivo físico: IP da máquina conforme AppConfig.adminHost
+  String get _baseUrl => AppConfig.adminApiBaseUrl;
 
   // ── Headers com JWT ──────────────────────────────────────────────────────────
   Future<Map<String, String>> _headers() async {
-    final token = await Session.getToken(); // ajusta se usares outro método
+    final token = await Session.getToken();
     return {
       'Content-Type': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
@@ -77,7 +79,7 @@ class AdminService {
   // ── GET /api/utilizadores ──────────────────────────────────────────────
   Future<List<UtilizadorAdmin>> getUtilizadores() async {
     final r = await http.get(
-      Uri.parse('$baseUrl/api/utilizadores'),
+      Uri.parse('$_baseUrl/utilizadores'),
       headers: await _headers(),
     );
     final body = _tratar(r);
@@ -93,7 +95,7 @@ class AdminService {
     required String role,
   }) async {
     final r = await http.post(
-      Uri.parse('$baseUrl/api/utilizadores'),
+      Uri.parse('$_baseUrl/utilizadores'),
       headers: await _headers(),
       body: jsonEncode({'nome': nome, 'email': email, 'password': password, 'perfil': role}),
     );
@@ -104,7 +106,7 @@ class AdminService {
   // ── PUT /api/utilizadores/:id/senha ────────────────────────────────────
   Future<void> alterarSenha({required int id, required String password}) async {
     final r = await http.put(
-      Uri.parse('$baseUrl/api/utilizadores/$id/senha'),
+      Uri.parse('$_baseUrl/utilizadores/$id/senha'),
       headers: await _headers(),
       body: jsonEncode({'password': password}),
     );
@@ -119,7 +121,7 @@ class AdminService {
     required String role,
   }) async {
     final r = await http.put(
-      Uri.parse('$baseUrl/api/utilizadores/$id'),
+      Uri.parse('$_baseUrl/utilizadores/$id'),
       headers: await _headers(),
       body: jsonEncode({'nome': nome, 'email': email, 'perfil': role}),
     );
@@ -130,7 +132,7 @@ class AdminService {
   // ── DELETE /api/utilizadores/:id ───────────────────────────────────────
   Future<void> apagarUtilizador(int id) async {
     final r = await http.delete(
-      Uri.parse('$baseUrl/api/utilizadores/$id'),
+      Uri.parse('$_baseUrl/utilizadores/$id'),
       headers: await _headers(),
     );
     _tratar(r);
