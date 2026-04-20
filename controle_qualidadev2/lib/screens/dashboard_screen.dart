@@ -6,7 +6,7 @@ import '../utils/toast.dart';
 import '../utils/session.dart';
 import 'gerir_membros_screen.dart';
 import '../theme/app_theme.dart';
-import 'admin_panel_screen.dart'; // ← NOVO
+import 'admin_panel_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String perfil;
@@ -236,28 +236,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ─── LOGOUT ──────────────────────────────────────────────────
-  void _confirmarLogout(BuildContext drawerContext) async {
-    Navigator.of(drawerContext).pop();
+  // CORRIGIDO: fecha o drawer primeiro, espera a animação e só depois
+  // mostra o diálogo usando o context raiz do widget (não o do drawer).
+  void _confirmarLogout() async {
+    // 1. Fecha o drawer
+    Navigator.of(context).pop();
+
+    // 2. Aguarda a animação de fecho do drawer
     await Future.delayed(const Duration(milliseconds: 300));
+
+    // 3. Verifica se o widget ainda está montado
     if (!mounted) return;
 
+    // 4. Mostra o diálogo usando o context do widget (não do drawer)
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Terminar Sessão'),
         content: const Text('Tens a certeza que queres sair?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancelar')),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child:
-                  const Text('Sair', style: TextStyle(color: Colors.red))),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Sair', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
 
+    // 5. Se confirmado, faz logout e navega para o ecrã inicial
     if (confirm == true && mounted) {
       await Session.logout();
       if (!mounted) return;
@@ -702,7 +710,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 size: 20,
               ),
               onTap: () {
-                Navigator.of(context).pop(); // fecha o drawer
+                Navigator.of(context).pop();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -718,13 +726,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const Divider(),
 
           // ── Logout ────────────────────────────────────────
-          Builder(
-            builder: (drawerContext) => ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Terminar Sessão',
-                  style: TextStyle(color: Colors.red)),
-              onTap: () => _confirmarLogout(drawerContext),
-            ),
+          // CORRIGIDO: chama _confirmarLogout() sem passar contexto do drawer
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text('Terminar Sessão',
+                style: TextStyle(color: Colors.red)),
+            onTap: _confirmarLogout,
           ),
           const SizedBox(height: 16),
         ],
