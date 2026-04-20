@@ -19,11 +19,18 @@ class UtilizadorAdmin {
   });
 
   factory UtilizadorAdmin.fromJson(Map<String, dynamic> json) {
+    final idValue = json['id'];
+    final id = idValue is int
+        ? idValue
+        : int.tryParse(idValue?.toString() ?? '') ??
+            (throw FormatException('ID inválido no utilizador'));
+
+    final perfil = json['role'] ?? json['perfil'];
     return UtilizadorAdmin(
-      id:    json['id']    as int,
-      nome:  json['nome']  as String,
+      id: id,
+      nome: json['nome'] as String,
       email: json['email'] as String,
-      role:  (json['role'] ?? json['perfil']) as String,
+      role: perfil is String ? perfil : perfil?.toString() ?? 'utilizador',
     );
   }
 
@@ -69,10 +76,10 @@ class AdminService {
   Map<String, dynamic> _tratar(http.Response r) {
     final body = jsonDecode(r.body) as Map<String, dynamic>;
     if (r.statusCode >= 200 && r.statusCode < 300) return body;
-    final erro = body['erro'] as String?
-        ?? body['error'] as String?
-        ?? body['message'] as String?
-        ?? 'Erro ${r.statusCode}';
+    final erro = body['erro'] as String? ??
+        body['error'] as String? ??
+        body['message'] as String? ??
+        'Erro ${r.statusCode}';
     throw AdminServiceException(erro);
   }
 
@@ -84,7 +91,9 @@ class AdminService {
     );
     final body = _tratar(r);
     final lista = body['utilizadores'] as List<dynamic>;
-    return lista.map((e) => UtilizadorAdmin.fromJson(e as Map<String, dynamic>)).toList();
+    return lista
+        .map((e) => UtilizadorAdmin.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ── POST /api/utilizadores ─────────────────────────────────────────────
@@ -97,7 +106,8 @@ class AdminService {
     final r = await http.post(
       Uri.parse('$_baseUrl/utilizadores'),
       headers: await _headers(),
-      body: jsonEncode({'nome': nome, 'email': email, 'password': password, 'perfil': role}),
+      body: jsonEncode(
+          {'nome': nome, 'email': email, 'password': password, 'perfil': role}),
     );
     final body = _tratar(r);
     return UtilizadorAdmin.fromJson(body['utilizador'] as Map<String, dynamic>);
@@ -127,7 +137,8 @@ class AdminService {
     );
     try {
       final body = _tratar(r);
-      return UtilizadorAdmin.fromJson(body['utilizador'] as Map<String, dynamic>);
+      return UtilizadorAdmin.fromJson(
+          body['utilizador'] as Map<String, dynamic>);
     } catch (e) {
       throw AdminServiceException('Erro ao guardar utilizador: $e');
     }
