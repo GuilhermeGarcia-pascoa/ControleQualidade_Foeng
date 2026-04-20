@@ -125,8 +125,12 @@ class AdminService {
       headers: await _headers(),
       body: jsonEncode({'nome': nome, 'email': email, 'perfil': role}),
     );
-    final body = _tratar(r);
-    return UtilizadorAdmin.fromJson(body['utilizador'] as Map<String, dynamic>);
+    try {
+      final body = _tratar(r);
+      return UtilizadorAdmin.fromJson(body['utilizador'] as Map<String, dynamic>);
+    } catch (e) {
+      throw AdminServiceException('Erro ao guardar utilizador: $e');
+    }
   }
 
   // ── DELETE /api/utilizadores/:id ───────────────────────────────────────

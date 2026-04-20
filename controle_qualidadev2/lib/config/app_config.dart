@@ -1,28 +1,21 @@
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
-  // ──── CONFIGURAÇÃO DA API PRINCIPAL ────────────────────────────────────────
-  static const String apiScheme = 'http';
-  static const String apiHost = '192.168.1.246';
-  static const int apiPort = 6003;
-  static const String apiPath = '/api';
-
-  // ──── CONFIGURAÇÃO DO ADMIN SERVICE ────────────────────────────────────────
-  // Nota: Em Android Emulator usa 10.0.2.2; em dispositivo físico usa o IP da máquina.
-  static const String adminScheme = 'http';
-  static const String adminHost = '192.168.1.63';
-  static const int adminPort = 3000;
-  static const String adminPath = '/api';
+  // ──── CONFIGURAÇÃO DA API ─────────────────────────────────────────────────
+  static const String scheme = 'http';
+  static const String host = '192.168.1.246';
+  static const int port = 6003;
+  static const String path = '/api';
 
   // ──── LOGS ─────────────────────────────────────────────────────────────────
   static const bool enableAppLogs = true;
 
   // ──── GETTERS ──────────────────────────────────────────────────────────────
-  static String get apiBaseUrl => '$apiScheme://$apiHost:$apiPort$apiPath';
-  static String get serverBaseUrl => '$apiScheme://$apiHost:$apiPort';
+  static String get apiBaseUrl => '$scheme://$host:$port$path';
+  static String get serverBaseUrl => '$scheme://$host:$port';
   
-  static String get adminBaseUrl => '$adminScheme://$adminHost:$adminPort';
-  static String get adminApiBaseUrl => '$adminScheme://$adminHost:$adminPort$adminPath';
+  static String get adminBaseUrl => '$scheme://$host:$port';
+  static String get adminApiBaseUrl => '$scheme://$host:$port$path';
 
   static String endpoint(String path) {
     final normalizedPath = path.startsWith('/') ? path : '/$path';
@@ -35,8 +28,8 @@ class AppConfig {
     }
 
     debugPrint('APP CONFIG');
-    debugPrint('Host: $apiHost');
-    debugPrint('Porta: $apiPort');
+    debugPrint('Host: $host');
+    debugPrint('Porta: $port');
     debugPrint('API Base URL: $apiBaseUrl');
   }
 }

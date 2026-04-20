@@ -45,17 +45,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     });
     try {
       final lista = await _service.getUtilizadores();
+      if (!mounted) return;
       setState(() {
         _utilizadores = lista;
-        _filtrar();
+        _filtrados = _aplicarFiltro(lista);
         _loading = false;
       });
     } on AdminServiceException catch (e) {
+      if (!mounted) return;
       setState(() {
         _erro = e.mensagem;
         _loading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _erro = 'Erro de ligação.';
         _loading = false;
@@ -64,16 +67,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   void _filtrar() {
-    final q = _searchCtrl.text.toLowerCase();
     setState(() {
-      _filtrados = _utilizadores.where((u) {
-        final mq = q.isEmpty ||
-            u.nome.toLowerCase().contains(q) ||
-            u.email.toLowerCase().contains(q);
-        final mr = _filtroRole.isEmpty || u.role == _filtroRole;
-        return mq && mr;
-      }).toList();
+      _filtrados = _aplicarFiltro(_utilizadores);
     });
+  }
+
+  List<UtilizadorAdmin> _aplicarFiltro(List<UtilizadorAdmin> lista) {
+    final q = _searchCtrl.text.toLowerCase();
+    return lista.where((u) {
+      final mq = q.isEmpty ||
+          u.nome.toLowerCase().contains(q) ||
+          u.email.toLowerCase().contains(q);
+      final mr = _filtroRole.isEmpty || u.role == _filtroRole;
+      return mq && mr;
+    }).toList();
   }
 
   ({Color bg, Color fg}) _coresRole(String role) =>

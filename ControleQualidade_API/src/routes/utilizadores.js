@@ -108,6 +108,7 @@ router.get('/email/:email', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
 // ─── ALTERAR SENHA ────────────────────────────────────────────────────
 router.put('/:id/senha', async (req, res) => {
   const { password } = req.body;
@@ -129,17 +130,6 @@ router.put('/:id/senha', async (req, res) => {
   }
 });
 
-// ─── APAGAR UTILIZADOR ───────────────────────────────────────────────
-router.delete('/:id', async (req, res) => {
-  try {
-    await pool.execute('DELETE FROM utilizadores WHERE id = ?', [req.params.id]);
-    logger.success(`Utilizador eliminado: ${req.params.id}`);
-    res.json({ success: true });
-  } catch (error) {
-    logger.error('Erro em DELETE /:id', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 // ─── TEMA ─────────────────────────────────────────────────
 router.get('/:id/tema', async (req, res) => {
   try {
@@ -161,6 +151,50 @@ router.put('/:id/tema', async (req, res) => {
   } catch (e) {
     logger.error('Erro em PUT /:id/tema', e);
     res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ─── EDITAR UTILIZADOR ────────────────────────────────────────────────
+router.put('/:id', async (req, res) => {
+  const { nome, email, perfil } = req.body;
+
+  if (!nome || !email) {
+    return res.status(400).json({ success: false, message: 'Nome e email são obrigatórios' });
+  }
+
+  try {
+    // Verificar se o email já existe (excepto para o utilizador atual)
+    const [existe] = await pool.execute(
+      'SELECT id FROM utilizadores WHERE email = ? AND id != ?',
+      [email, req.params.id]
+    );
+
+    if (existe.length > 0) {
+      return res.status(409).json({ success: false, message: 'Email já registado' });
+    }
+
+    await pool.execute(
+      'UPDATE utilizadores SET nome = ?, email = ?, perfil = ? WHERE id = ?',
+      [nome, email, perfil || 'utilizador', req.params.id]
+    );
+
+    logger.success(`Utilizador ${req.params.id} atualizado`);
+    res.json({ success: true, utilizador: { id: parseInt(req.params.id), nome, email, perfil: perfil || 'utilizador' } });
+  } catch (error) {
+    logger.error('Erro em PUT /:id', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── APAGAR UTILIZADOR ───────────────────────────────────────────────
+router.delete('/:id', async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM utilizadores WHERE id = ?', [req.params.id]);
+    logger.success(`Utilizador eliminado: ${req.params.id}`);
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Erro em DELETE /:id', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
