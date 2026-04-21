@@ -1,12 +1,13 @@
 const express = require('express');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
-const { md5 } = require('../utils/hash');
+const { hashPassword } = require('../utils/hash');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
 // ─── LISTAR TODOS ───────────────────────────────────────────────────
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, requireAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT id, nome, email, perfil FROM utilizadores'
@@ -20,7 +21,7 @@ router.get('/', async (req, res) => {
 });
 
 // ─── CRIAR UTILIZADOR ─────────────────────────────────────────────
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, requireAdmin, async (req, res) => {
   const { nome, email, password, perfil } = req.body;
 
   if (!nome || !email || !password) {
@@ -37,7 +38,7 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ success: false, message: 'Email já registado' });
     }
 
-    const hashedPassword = md5(password);
+    const hashedPassword = await hashPassword(password);
 
     const [result] = await pool.execute(
       'INSERT INTO utilizadores (nome, email, password, perfil) VALUES (?, ?, ?, ?)',
@@ -73,7 +74,7 @@ router.post('/registar', async (req, res) => {
       return res.status(409).json({ success: false, message: 'Email já registado' });
     }
 
-    const hashedPassword = md5(password);
+    const hashedPassword = await hashPassword(password);
 
     const [result] = await pool.execute(
       'INSERT INTO utilizadores (nome, email, password, perfil) VALUES (?, ?, ?, ?)',
@@ -110,14 +111,14 @@ router.get('/email/:email', async (req, res) => {
 });
 
 // ─── ALTERAR SENHA ────────────────────────────────────────────────────
-router.put('/:id/senha', async (req, res) => {
+router.put('/:id/senha', requireAuth, async (req, res) => {
   const { password } = req.body;
   if (!password) {
     return res.status(400).json({ success: false, message: 'Password obrigatória' });
   }
 
   try {
-    const hashedPassword = md5(password);
+    const hashedPassword = await hashPassword(password);
     await pool.execute(
       'UPDATE utilizadores SET password = ? WHERE id = ?',
       [hashedPassword, req.params.id]
@@ -131,7 +132,7 @@ router.put('/:id/senha', async (req, res) => {
 });
 
 // ─── TEMA ─────────────────────────────────────────────────
-router.get('/:id/tema', async (req, res) => {
+router.get('/:id/tema', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT tema_escuro FROM utilizadores WHERE id = ?', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ success: false });
@@ -142,7 +143,7 @@ router.get('/:id/tema', async (req, res) => {
   }
 });
 
-router.put('/:id/tema', async (req, res) => {
+router.put('/:id/tema', requireAuth, async (req, res) => {
   try {
     const { tema_escuro } = req.body;
     await pool.execute('UPDATE utilizadores SET tema_escuro = ? WHERE id = ?', [tema_escuro ? 1 : 0, req.params.id]);
@@ -155,7 +156,7 @@ router.put('/:id/tema', async (req, res) => {
 });
 
 // ─── EDITAR UTILIZADOR ────────────────────────────────────────────────
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
   const { nome, email, perfil } = req.body;
 
   if (!nome || !email) {
@@ -187,7 +188,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ─── APAGAR UTILIZADOR ───────────────────────────────────────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     await pool.execute('DELETE FROM utilizadores WHERE id = ?', [req.params.id]);
     logger.success(`Utilizador eliminado: ${req.params.id}`);

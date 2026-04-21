@@ -1,35 +1,13 @@
 const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const { requireAuth } = require('../middleware/auth');
+const { upload, handleUploadError } = require('../config/upload');
 
 const router = express.Router();
 
-// ─── CONFIGURAÇÃO DE UPLOADS ──────────────────────────────
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const unique = `${Date.now()}_${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}${path.extname(file.originalname)}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|gif|webp/;
-    cb(null, allowed.test(file.mimetype));
-  },
-});
-
 // ─── OBTER REGISTOS ───────────────────────────────────────
-router.get('/:noId', async (req, res) => {
+router.get('/:noId', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       `SELECT r.*, u.nome as nome_utilizador 
@@ -48,28 +26,81 @@ router.get('/:noId', async (req, res) => {
 });
 
 // ─── CRIAR REGISTO (com upload de ficheiros) ───────────────
-router.post('/', upload.any(), async (req, res) => {
-  try {
-    const { no_id, utilizador_id, dados_json } = req.body;
-    const dados = JSON.parse(dados_json);
-    
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        dados[file.fieldname] = `/uploads/${file.filename}`;
-      }
+router.post('/', requireAuth, (req, res) => {
+  // Usar upload.array() com limite de 5 ficheiros
+  upload.array('files', 5)(req, res, async function (err) {
+    // Tratar erros de upload
+    if (err) {
+      logger.warn(`Erro no upload: ${err.message}`);
+      return res.status(400).json({
+        success: false,
+        error: err.message,
+        code: err.code || 'UPLOAD_ERROR'
+      });
     }
-    
-    const [result] = await pool.execute(
-      'INSERT INTO registos (no_id, utilizador_id, dados) VALUES (?, ?, ?)',
-      [no_id, utilizador_id || 1, JSON.stringify(dados)]
-    );
-    
-    logger.success(`Registo criado (ID: ${result.insertId}) para nó ${no_id}`);
-    res.json({ success: true, id: result.insertId });
-  } catch (error) {
-    logger.error('Erro em POST /registos', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
+
+    try {
+      const { no_id, utilizador_id, dados_json } = req.body;
+      
+      // Validar campos obrigatórios
+      if (!no_id || !dados_json) {
+        return res.status(400).json({
+          success: false,
+          error: 'Campos obrigatórios: no_id, dados_json'
+        });
+      }
+
+      let dados;
+      try {
+        dados = JSON.parse(dados_json);
+      } catch (parseErr) {
+        return res.status(400).json({
+          success: false,
+          error: 'JSON inválido em dados_json'
+        });
+      }
+      
+      // Adicionar caminhos dos ficheiros ao objeto dados
+      if (req.files && req.files.length > 0) {
+        logger.info(`${req.files.length} ficheiro(s) enviado(s) para nó ${no_id}`);
+        
+        for (const file of req.files) {
+          // Usar fieldname como chave ou 'arquivo' como padrão
+          const fieldName = file.fieldname || 'arquivo';
+          
+          // Se multiple, criar array
+          if (!dados[fieldName]) {
+            dados[fieldName] = [];
+          }
+          
+          if (Array.isArray(dados[fieldName])) {
+            dados[fieldName].push(`/uploads/${file.filename}`);
+          } else {
+            dados[fieldName] = `/uploads/${file.filename}`;
+          }
+        }
+      }
+      
+      // Inserir registo na base de dados
+      const [result] = await pool.execute(
+        'INSERT INTO registos (no_id, utilizador_id, dados) VALUES (?, ?, ?)',
+        [no_id, utilizador_id || 1, JSON.stringify(dados)]
+      );
+      
+      logger.success(`Registo criado (ID: ${result.insertId}) para nó ${no_id} com ${req.files?.length || 0} ficheiro(s)`);
+      res.json({
+        success: true,
+        id: result.insertId,
+        files: req.files?.length || 0
+      });
+    } catch (error) {
+      logger.error('Erro em POST /registos', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
 });
 
 module.exports = router;

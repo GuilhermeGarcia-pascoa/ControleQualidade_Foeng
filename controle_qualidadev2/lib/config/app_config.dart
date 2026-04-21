@@ -1,19 +1,28 @@
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
-  // ──── CONFIGURAÇÃO DA API ─────────────────────────────────────────────────
-  static const String scheme = 'http';
-  static const String host = '192.168.1.246';
-  static const int port = 6003;
-  static const String path = '/api';
+  static const String scheme = String.fromEnvironment(
+    'API_SCHEME',
+    defaultValue: 'http',
+  );
+  static const String host = String.fromEnvironment(
+    'API_HOST',
+    defaultValue: '192.168.1.246',
+  );
+  static const int port = int.fromEnvironment(
+    'API_PORT',
+    defaultValue: 6003,
+  );
+  static const String path = String.fromEnvironment(
+    'API_PATH',
+    defaultValue: '/api',
+  );
 
-  // ──── LOGS ─────────────────────────────────────────────────────────────────
   static const bool enableAppLogs = true;
 
-  // ──── GETTERS ──────────────────────────────────────────────────────────────
   static String get apiBaseUrl => '$scheme://$host:$port$path';
   static String get serverBaseUrl => '$scheme://$host:$port';
-  
+
   static String get adminBaseUrl => '$scheme://$host:$port';
   static String get adminApiBaseUrl => '$scheme://$host:$port$path';
 
@@ -33,5 +42,3 @@ class AppConfig {
     debugPrint('API Base URL: $apiBaseUrl');
   }
 }
-
-

@@ -1,12 +1,13 @@
 const express = require('express');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
 // ─── OBTER ANCESTRAIS ─────────────────────────────────────
 // IMPORTANTE: Rotas específicas SEMPRE antes das genéricas (/:projetoId)
-router.get('/:noId/ancestrais', async (req, res) => {
+router.get('/:noId/ancestrais', requireAuth, async (req, res) => {
   const { noId } = req.params;
   try {
     logger.info(`[ancestrais] Obtendo para noId=${noId}`);
@@ -31,7 +32,7 @@ router.get('/:noId/ancestrais', async (req, res) => {
 });
 
 // ─── OBTER DESCENDENTES ───────────────────────────────────
-router.get('/:noId/descendentes', async (req, res) => {
+router.get('/:noId/descendentes', requireAuth, async (req, res) => {
   const { noId } = req.params;
   try {
     const descendentes = [];
@@ -51,7 +52,7 @@ router.get('/:noId/descendentes', async (req, res) => {
 });
 
 // ─── OBTER INFORMAÇÃO DO NÓ ───────────────────────────────
-router.get('/info/:noId', async (req, res) => {
+router.get('/info/:noId', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT id, projeto_id, pai_id, nome FROM nos WHERE id = ?',
@@ -72,7 +73,7 @@ router.get('/info/:noId', async (req, res) => {
 // CRÍTICO: Esta rota DEVE estar antes de /:projetoId
 // Devolve nós partilhados diretamente (via utilizador_no) E
 // nós de projetos onde o utilizador é membro (via utilizador_projeto)
-router.get('/partilhados/:userId', async (req, res) => {
+router.get('/partilhados/:userId', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     logger.info(`[partilhados] Obtendo para userId=${userId}`);
@@ -143,7 +144,7 @@ router.get('/partilhados/:userId', async (req, res) => {
 });
 
 // ─── OBTER TODOS OS NÓS DE UM PROJETO ──────────────────────
-router.get('/:projetoId/todos', async (req, res) => {
+router.get('/:projetoId/todos', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT * FROM nos WHERE projeto_id = ? ORDER BY nome ASC',
@@ -157,7 +158,7 @@ router.get('/:projetoId/todos', async (req, res) => {
 });
 
 // ─── NÓS COM ACESSO ───────────────────────────────────────
-router.get('/:projetoId/acesso/:userId', async (req, res) => {
+router.get('/:projetoId/acesso/:userId', requireAuth, async (req, res) => {
   const { projetoId, userId } = req.params;
   try {
     const [diretos] = await pool.query(
@@ -207,7 +208,7 @@ router.get('/:projetoId/acesso/:userId', async (req, res) => {
 });
 
 // ─── CRIAR NÓ ──────────────────────────────────────────────
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   const { projeto_id, pai_id, nome } = req.body;
   try {
     const [result] = await pool.execute(
@@ -223,7 +224,7 @@ router.post('/', async (req, res) => {
 });
 
 // ─── ATUALIZAR NÓ ─────────────────────────────────────────
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
   const { nome } = req.body;
   try {
     await pool.execute('UPDATE nos SET nome = ? WHERE id = ?', [nome, req.params.id]);
@@ -236,7 +237,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ─── MOVER NÓ ─────────────────────────────────────────────
-router.put('/:id/mover', async (req, res) => {
+router.put('/:id/mover', requireAuth, async (req, res) => {
   const { pai_id } = req.body;
   try {
     await pool.execute('UPDATE nos SET pai_id = ? WHERE id = ?', [pai_id || null, req.params.id]);
@@ -249,7 +250,7 @@ router.put('/:id/mover', async (req, res) => {
 });
 
 // ─── DELETAR NÓ ───────────────────────────────────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   try {
     await pool.execute('DELETE FROM nos WHERE id = ?', [req.params.id]);
     logger.success(`Nó ${req.params.id} eliminado`);
@@ -261,7 +262,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ─── COPIAR NÓ ─────────────────────────────────────────────
-router.post('/:id/copiar', async (req, res) => {
+router.post('/:id/copiar', requireAuth, async (req, res) => {
   const { novo_pai_id, novo_projeto_id, incluir_registos, incluir_subpastas, incluir_campos } = req.body;
   try {
     const [nos] = await pool.execute('SELECT projeto_id FROM nos WHERE id = ?', [req.params.id]);
@@ -282,7 +283,7 @@ router.post('/:id/copiar', async (req, res) => {
 });
 
 // ─── NÓS POR PROJETO (genérica) — DEVE SER A ÚLTIMA ────────
-router.get('/:projetoId', async (req, res) => {
+router.get('/:projetoId', requireAuth, async (req, res) => {
   const { projetoId } = req.params;
   const { pai_id } = req.query;
   try {

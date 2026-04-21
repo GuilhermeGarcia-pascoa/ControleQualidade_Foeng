@@ -1,11 +1,12 @@
 const express = require('express');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
 // ─── CRIAR PROJETO ─────────────────────────────────────────
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   const { nome, descricao, criado_por } = req.body;
   try {
     const [result] = await pool.execute(
@@ -21,7 +22,7 @@ router.post('/', async (req, res) => {
 });
 
 // ─── OBTER PROJETOS DO TRABALHADOR ─────────────────────────
-router.get('/trabalhador/:userId', async (req, res) => {
+router.get('/trabalhador/:userId', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       `SELECT p.* FROM projetos p
@@ -39,7 +40,7 @@ router.get('/trabalhador/:userId', async (req, res) => {
 });
 
 // ─── CONTAGEM DE NÓS E REGISTOS ────────────────────────────
-router.get('/:id/contagem', async (req, res) => {
+router.get('/:id/contagem', requireAuth, async (req, res) => {
   try {
     const [nos] = await pool.execute('SELECT COUNT(*) as total_nos FROM nos WHERE projeto_id = ?', [req.params.id]);
     const [registos] = await pool.execute(
@@ -55,7 +56,7 @@ router.get('/:id/contagem', async (req, res) => {
 });
 
 // ─── OBTER PROJETOS DE UM UTILIZADOR ───────────────────────
-router.get('/:userId', async (req, res) => {
+router.get('/:userId', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT * FROM projetos WHERE criado_por = ? ORDER BY criado_em DESC',
@@ -70,7 +71,7 @@ router.get('/:userId', async (req, res) => {
 });
 
 // ─── ATUALIZAR PROJETO ─────────────────────────────────────
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
   const { nome, descricao } = req.body;
   try {
     await pool.execute('UPDATE projetos SET nome = ?, descricao = ? WHERE id = ?', [nome, descricao, req.params.id]);
@@ -83,7 +84,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ─── DELETAR PROJETO ───────────────────────────────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const projetoId = req.params.id;
@@ -119,7 +120,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ─── COPIAR PROJETO ───────────────────────────────────────
-router.post('/:id/copiar', async (req, res) => {
+router.post('/:id/copiar', requireAuth, async (req, res) => {
   const { nome, criado_por } = req.body;
   try {
     logger.info(`Copiando projeto ${req.params.id} → "${nome}"`);
