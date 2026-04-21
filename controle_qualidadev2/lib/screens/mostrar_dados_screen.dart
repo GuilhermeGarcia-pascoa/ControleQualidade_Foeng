@@ -14,7 +14,8 @@ class MostrarDadosScreen extends StatefulWidget {
   State<MostrarDadosScreen> createState() => _MostrarDadosScreenState();
 }
 
-class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
+class _MostrarDadosScreenState extends State<MostrarDadosScreen>
+    with SingleTickerProviderStateMixin {
   final ScrollController _scrollV = ScrollController();
   final ScrollController _scrollH = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
@@ -30,9 +31,16 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
   String? _sortColuna;
   bool _sortAsc = true;
 
+  late AnimationController _animCtrl;
+  late Animation<double> _fadeAnim;
+
   @override
   void initState() {
     super.initState();
+    _animCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 500));
+    _fadeAnim =
+        CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _carregar();
     _searchCtrl.addListener(_onSearch);
   }
@@ -42,29 +50,37 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
     _scrollV.dispose();
     _scrollH.dispose();
     _searchCtrl.dispose();
+    _animCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _carregar() async {
     setState(() => _loading = true);
     try {
-      final noData = await DatabaseHelper.instance.obterNoPorId(widget.noId);
-      final camposRaw = await DatabaseHelper.instance.getCampos(widget.noId);
-      final registosRaw = await DatabaseHelper.instance.getRegistos(widget.noId);
+      final noData =
+          await DatabaseHelper.instance.obterNoPorId(widget.noId);
+      final camposRaw =
+          await DatabaseHelper.instance.getCampos(widget.noId);
+      final registosRaw =
+          await DatabaseHelper.instance.getRegistos(widget.noId);
       setState(() {
         _no = noData;
-        _campos = camposRaw.map((c) => {'id': c.id, 'nome': c.nomeCampo}).toList();
+        _campos =
+            camposRaw.map((c) => {'id': c.id, 'nome': c.nomeCampo}).toList();
         _todos = registosRaw;
         _filtrados = List.from(_todos);
         _loading = false;
       });
+      _animCtrl.forward(from: 0);
     } catch (e) {
       setState(() => _loading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erro: $e'), backgroundColor: AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+          content: Text('Erro: $e'),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
     }
   }
 
@@ -81,7 +97,9 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
       return reg['dados'] is String
           ? json.decode(reg['dados'])
           : Map<String, dynamic>.from(reg['dados']);
-    } catch (_) { return {}; }
+    } catch (_) {
+      return {};
+    }
   }
 
   void _aplicarFiltros() {
@@ -89,19 +107,38 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
     if (_filtroBusca.isNotEmpty) {
       lista = lista.where((reg) {
         final dados = _parseDados(reg);
-        if (_filtroColuna != null) {
-          return (dados[_filtroColuna] ?? '').toString().toLowerCase().contains(_filtroBusca);
+        final autor =
+            (reg['nome_utilizador'] ?? '').toString().toLowerCase();
+        if (_filtroColuna == '_autor') {
+          return autor.contains(_filtroBusca);
         }
-        return dados.values.any((v) => v.toString().toLowerCase().contains(_filtroBusca));
+        if (_filtroColuna != null) {
+          return (dados[_filtroColuna] ?? '')
+              .toString()
+              .toLowerCase()
+              .contains(_filtroBusca);
+        }
+        return dados.values
+                .any((v) => v.toString().toLowerCase().contains(_filtroBusca)) ||
+            autor.contains(_filtroBusca);
       }).toList();
     }
     if (_sortColuna != null) {
       lista.sort((a, b) {
-        final va = (_parseDados(a)[_sortColuna] ?? '').toString().toLowerCase();
-        final vb = (_parseDados(b)[_sortColuna] ?? '').toString().toLowerCase();
+        String va;
+        String vb;
+        if (_sortColuna == '_autor') {
+          va = (a['nome_utilizador'] ?? '').toString().toLowerCase();
+          vb = (b['nome_utilizador'] ?? '').toString().toLowerCase();
+        } else {
+          va = (_parseDados(a)[_sortColuna] ?? '').toString().toLowerCase();
+          vb = (_parseDados(b)[_sortColuna] ?? '').toString().toLowerCase();
+        }
         final na = double.tryParse(va);
         final nb = double.tryParse(vb);
-        final cmp = (na != null && nb != null) ? na.compareTo(nb) : va.compareTo(vb);
+        final cmp = (na != null && nb != null)
+            ? na.compareTo(nb)
+            : va.compareTo(vb);
         return _sortAsc ? cmp : -cmp;
       });
     }
@@ -110,7 +147,9 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
 
   void _toggleSort(String coluna) {
     setState(() {
-      _sortColuna == coluna ? _sortAsc = !_sortAsc : (_sortColuna = coluna, _sortAsc = true);
+      _sortColuna == coluna
+          ? _sortAsc = !_sortAsc
+          : (_sortColuna = coluna, _sortAsc = true);
       _aplicarFiltros();
     });
   }
@@ -134,8 +173,11 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
     final lower = val.toLowerCase();
     return lower.startsWith('/uploads/') ||
         (lower.startsWith('http') &&
-            (lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
-             lower.endsWith('.png') || lower.endsWith('.gif') || lower.endsWith('.webp')));
+            (lower.endsWith('.jpg') ||
+                lower.endsWith('.jpeg') ||
+                lower.endsWith('.png') ||
+                lower.endsWith('.gif') ||
+                lower.endsWith('.webp')));
   }
 
   String _urlImagem(String caminho) {
@@ -153,185 +195,470 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: InteractiveViewer(
-              minScale: 0.5, maxScale: 4.0,
-              child: Image.network(url, fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 200, height: 200,
-                  color: AppTheme.darkSurfaceHigh,
-                  child: const Center(child: Icon(Icons.broken_image, size: 48, color: AppTheme.neutral500))))),
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.network(url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                      width: 200,
+                      height: 200,
+                      color: AppTheme.darkSurfaceHigh,
+                      child: const Center(
+                          child: Icon(Icons.broken_image,
+                              size: 48, color: AppTheme.neutral500)))),
+            ),
           ),
-          Positioned(top: -12, right: -12,
-            child: FloatingActionButton.small(
-              backgroundColor: Colors.white,
-              foregroundColor: AppTheme.neutral800,
-              onPressed: () => Navigator.pop(context),
-              child: const Icon(Icons.close_rounded))),
+          Positioned(
+              top: -12,
+              right: -12,
+              child: FloatingActionButton.small(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppTheme.neutral800,
+                  onPressed: () => Navigator.pop(context),
+                  child: const Icon(Icons.close_rounded))),
         ]),
       ),
     );
   }
 
+  // ─── SUMMARY STATS ──────────────────────────────────────────────────────
+  Map<String, int> _calcularAutores() {
+    final contagem = <String, int>{};
+    for (final reg in _todos) {
+      final autor = reg['nome_utilizador']?.toString() ?? 'Desconhecido';
+      contagem[autor] = (contagem[autor] ?? 0) + 1;
+    }
+    return contagem;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final autores = _calcularAutores();
+    final topAutor = autores.entries.isEmpty
+        ? null
+        : autores.entries.reduce((a, b) => a.value > b.value ? a : b);
+
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkSurface : AppTheme.neutral50,
-      appBar: AppBar(
-        backgroundColor: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded,
-            color: isDark ? const Color(0xFFCBD5E1) : AppTheme.neutral800),
-          onPressed: () => Navigator.pop(context)),
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Registos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
-            color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900)),
-          Text('${_filtrados.length} de ${_todos.length} entradas',
-            style: const TextStyle(fontSize: 11, color: AppTheme.neutral400)),
-        ]),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            onPressed: _carregar,
-            color: isDark ? AppTheme.neutral400 : AppTheme.neutral600,
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1,
-            color: isDark ? AppTheme.darkBorder : AppTheme.neutral100)),
-      ),
+      backgroundColor:
+          isDark ? AppTheme.darkSurface : const Color(0xFFF0F4FF),
+      appBar: _buildAppBar(isDark),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.accentBlue))
+          ? _buildLoader()
           : _todos.isEmpty
               ? _EmptyData(isDark: isDark)
-              : Column(children: [
-                  // ─── FILTER BAR ──────────────────────────────────────
-                  Container(
-                    color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Column(children: [
-                      // Search
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDark ? AppTheme.darkSurface : AppTheme.neutral50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isDark ? AppTheme.darkBorder : AppTheme.neutral200)),
-                        child: Row(children: [
-                          const Padding(padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Icon(Icons.search_rounded,
-                              color: AppTheme.neutral400, size: 18)),
-                          Expanded(child: TextField(
-                            controller: _searchCtrl,
-                            style: TextStyle(fontSize: 13,
-                              color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900),
-                            decoration: const InputDecoration(
-                              hintText: 'Pesquisar registos...',
-                              hintStyle: TextStyle(color: AppTheme.neutral400, fontSize: 13),
-                              border: InputBorder.none,
-                              filled: false,
-                              contentPadding: EdgeInsets.symmetric(vertical: 10)),
-                          )),
-                          if (_temFiltros)
-                            IconButton(
-                              icon: const Icon(Icons.filter_alt_off_rounded,
-                                color: AppTheme.error, size: 18),
-                              onPressed: _limparFiltros,
-                              tooltip: 'Limpar filtros'),
-                        ]),
-                      ),
-                      // Column chips
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 32,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _ColumnChip(
-                              label: 'Todos', selected: _filtroColuna == null,
-                              onTap: () => setState(() { _filtroColuna = null; _aplicarFiltros(); })),
-                            const SizedBox(width: 6),
-                            ..._campos.map((c) => Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: _ColumnChip(
-                                label: c['nome'] as String,
-                                selected: _filtroColuna == c['nome'],
-                                onTap: () => setState(() {
-                                  _filtroColuna = _filtroColuna == c['nome'] ? null : c['nome'];
-                                  _aplicarFiltros();
-                                })),
-                            )),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ]),
-                  ),
-                  Divider(height: 1, color: isDark ? AppTheme.darkBorder : AppTheme.neutral100),
-                  // ─── TABLE ────────────────────────────────────────────
-                  Expanded(child: _filtrados.isEmpty
-                      ? _NoResults(isDark: isDark, query: _filtroBusca)
-                      : _DataTableView(
-                          campos: _campos,
-                          registos: _filtrados,
-                          sortColuna: _sortColuna,
-                          sortAsc: _sortAsc,
-                          isDark: isDark,
-                          scrollV: _scrollV,
-                          scrollH: _scrollH,
-                          onSort: _toggleSort,
-                          parseDados: _parseDados,
-                          isImagem: _isImagem,
-                          urlImagem: _urlImagem,
-                          onViewImage: _verImagemFullscreen,
-                        )),
-                ]),
+              : FadeTransition(
+                  opacity: _fadeAnim,
+                  child: Column(children: [
+                    // ─── STATS BANNER ────────────────────────────────
+                    _StatsBanner(
+                      total: _todos.length,
+                      filtrado: _filtrados.length,
+                      topAutor: topAutor?.key,
+                      topCount: topAutor?.value ?? 0,
+                      isDark: isDark,
+                    ),
+
+                    // ─── FILTER BAR ──────────────────────────────────
+                    _FilterBar(
+                      searchCtrl: _searchCtrl,
+                      campos: _campos,
+                      filtroColuna: _filtroColuna,
+                      temFiltros: _temFiltros,
+                      isDark: isDark,
+                      onColumnFilter: (col) => setState(() {
+                        _filtroColuna = _filtroColuna == col ? null : col;
+                        _aplicarFiltros();
+                      }),
+                      onClearFilters: _limparFiltros,
+                    ),
+
+                    Divider(
+                        height: 1,
+                        color: isDark
+                            ? AppTheme.darkBorder
+                            : AppTheme.neutral200),
+
+                    // ─── TABLE ────────────────────────────────────────
+                    Expanded(
+                      child: _filtrados.isEmpty
+                          ? _NoResults(
+                              isDark: isDark, query: _filtroBusca)
+                          : _DataTableView(
+                              campos: _campos,
+                              registos: _filtrados,
+                              sortColuna: _sortColuna,
+                              sortAsc: _sortAsc,
+                              isDark: isDark,
+                              scrollV: _scrollV,
+                              scrollH: _scrollH,
+                              onSort: _toggleSort,
+                              parseDados: _parseDados,
+                              isImagem: _isImagem,
+                              urlImagem: _urlImagem,
+                              onViewImage: _verImagemFullscreen,
+                            ),
+                    ),
+                  ]),
+                ),
       floatingActionButton: _no != null
           ? FloatingActionButton(
               backgroundColor: AppTheme.accentBlue,
               foregroundColor: Colors.white,
-              onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => PreencherTabelaScreen(no: _no!)))
-                  .then((ok) { if (ok == true) _carregar(); }),
+              onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              PreencherTabelaScreen(no: _no!)))
+                  .then((ok) {
+                if (ok == true) _carregar();
+              }),
               child: const Icon(Icons.add_rounded),
             )
           : null,
     );
   }
-}
 
-class _ColumnChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _ColumnChip({required this.label, required this.selected, required this.onTap});
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppTheme.accentBlue
-              : (isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? AppTheme.accentBlue
-                : (isDark ? AppTheme.darkBorder : AppTheme.neutral200))),
-        child: Text(label,
-          style: TextStyle(
-            fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected ? Colors.white
-                : (isDark ? AppTheme.neutral300 : AppTheme.neutral600))),
+  PreferredSizeWidget _buildAppBar(bool isDark) {
+    return AppBar(
+      backgroundColor: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_rounded,
+            color: isDark ? const Color(0xFFCBD5E1) : AppTheme.neutral800),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Registos',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+                color: isDark
+                    ? const Color(0xFFE2E8F0)
+                    : AppTheme.neutral900)),
+        Text(
+            '${_filtrados.length} de ${_todos.length} entradas',
+            style:
+                const TextStyle(fontSize: 11, color: AppTheme.neutral400)),
+      ]),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh_rounded, size: 20),
+          onPressed: _carregar,
+          color: isDark ? AppTheme.neutral400 : AppTheme.neutral600,
+        ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Divider(
+            height: 1,
+            color: isDark ? AppTheme.darkBorder : AppTheme.neutral100),
+      ),
+    );
+  }
+
+  Widget _buildLoader() {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: AppTheme.accentBlue),
+          SizedBox(height: 16),
+          Text('A carregar registos...',
+              style:
+                  TextStyle(color: AppTheme.neutral400, fontSize: 13)),
+        ],
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATS BANNER
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StatsBanner extends StatelessWidget {
+  final int total;
+  final int filtrado;
+  final String? topAutor;
+  final int topCount;
+  final bool isDark;
+
+  const _StatsBanner({
+    required this.total,
+    required this.filtrado,
+    required this.topAutor,
+    required this.topCount,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(children: [
+        _StatPill(
+          icon: Icons.table_rows_rounded,
+          label: 'Total',
+          value: '$total',
+          color: AppTheme.accentBlue,
+          isDark: isDark,
+        ),
+        const SizedBox(width: 10),
+        _StatPill(
+          icon: Icons.filter_list_rounded,
+          label: 'Visíveis',
+          value: '$filtrado',
+          color: AppTheme.accentTeal,
+          isDark: isDark,
+        ),
+        if (topAutor != null) ...[
+          const SizedBox(width: 10),
+          Expanded(
+            child: _AuthorPill(
+              autor: topAutor!,
+              count: topCount,
+              isDark: isDark,
+            ),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final bool isDark;
+
+  const _StatPill({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(value,
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color)),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.neutral400,
+                  letterSpacing: 0.3)),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _AuthorPill extends StatelessWidget {
+  final String autor;
+  final int count;
+  final bool isDark;
+
+  const _AuthorPill(
+      {required this.autor, required this.count, required this.isDark});
+
+  String get _initials {
+    final parts =
+        autor.trim().split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isDark ? AppTheme.darkBorder : AppTheme.neutral200),
+      ),
+      child: Row(children: [
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: AppTheme.accentBlue.withOpacity(0.15),
+          child: Text(_initials,
+              style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.accentBlue)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(autor,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? const Color(0xFFCBD5E1)
+                            : AppTheme.neutral800)),
+                Text('$count registo${count != 1 ? 's' : ''}',
+                    style: const TextStyle(
+                        fontSize: 9,
+                        color: AppTheme.neutral400,
+                        letterSpacing: 0.3)),
+              ]),
+        ),
+        Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppTheme.warning.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Text('TOP',
+              style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.warning,
+                  letterSpacing: 0.5)),
+        ),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTER BAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FilterBar extends StatelessWidget {
+  final TextEditingController searchCtrl;
+  final List<Map<String, dynamic>> campos;
+  final String? filtroColuna;
+  final bool temFiltros;
+  final bool isDark;
+  final void Function(String?) onColumnFilter;
+  final VoidCallback onClearFilters;
+
+  const _FilterBar({
+    required this.searchCtrl,
+    required this.campos,
+    required this.filtroColuna,
+    required this.temFiltros,
+    required this.isDark,
+    required this.onColumnFilter,
+    required this.onClearFilters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Column(children: [
+        // Search
+        Container(
+          decoration: BoxDecoration(
+            color:
+                isDark ? AppTheme.darkSurface : AppTheme.neutral50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                color: isDark
+                    ? AppTheme.darkBorder
+                    : AppTheme.neutral200)),
+          child: Row(children: [
+            const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Icon(Icons.search_rounded,
+                    color: AppTheme.neutral400, size: 18)),
+            Expanded(
+                child: TextField(
+              controller: searchCtrl,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: isDark
+                      ? const Color(0xFFE2E8F0)
+                      : AppTheme.neutral900),
+              decoration: const InputDecoration(
+                  hintText: 'Pesquisar registos ou autores...',
+                  hintStyle: TextStyle(
+                      color: AppTheme.neutral400, fontSize: 13),
+                  border: InputBorder.none,
+                  filled: false,
+                  contentPadding:
+                      EdgeInsets.symmetric(vertical: 10)),
+            )),
+            if (temFiltros)
+              IconButton(
+                  icon: const Icon(Icons.filter_alt_off_rounded,
+                      color: AppTheme.error, size: 18),
+                  onPressed: onClearFilters,
+                  tooltip: 'Limpar filtros'),
+          ]),
+        ),
+        const SizedBox(height: 10),
+        // Column chips (incluindo "Autor")
+        SizedBox(
+          height: 32,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _ColumnChip(
+                  label: 'Todos',
+                  selected: filtroColuna == null,
+                  onTap: () => onColumnFilter(null)),
+              const SizedBox(width: 6),
+              // Chip especial para Autor
+              _ColumnChip(
+                label: 'Autor',
+                selected: filtroColuna == '_autor',
+                onTap: () => onColumnFilter('_autor'),
+                isAuthor: true,
+              ),
+              const SizedBox(width: 6),
+              ...campos.map((c) => Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: _ColumnChip(
+                        label: c['nome'] as String,
+                        selected: filtroColuna == c['nome'],
+                        onTap: () => onColumnFilter(c['nome'])),
+                  )),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA TABLE
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _DataTableView extends StatelessWidget {
   final List<Map<String, dynamic>> campos;
@@ -348,99 +675,186 @@ class _DataTableView extends StatelessWidget {
   final void Function(String) onViewImage;
 
   const _DataTableView({
-    required this.campos, required this.registos, required this.sortColuna,
-    required this.sortAsc, required this.isDark, required this.scrollV,
-    required this.scrollH, required this.onSort, required this.parseDados,
-    required this.isImagem, required this.urlImagem, required this.onViewImage,
+    required this.campos,
+    required this.registos,
+    required this.sortColuna,
+    required this.sortAsc,
+    required this.isDark,
+    required this.scrollV,
+    required this.scrollH,
+    required this.onSort,
+    required this.parseDados,
+    required this.isImagem,
+    required this.urlImagem,
+    required this.onViewImage,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Todas as colunas: Autor + campos dinâmicos
+    final todasColunas = <Map<String, dynamic>>[
+      {'id': '_autor', 'nome': 'Autor', 'isAuthor': true},
+      ...campos,
+    ];
+
     return Scrollbar(
-      controller: scrollV, thumbVisibility: true,
+      controller: scrollV,
+      thumbVisibility: true,
       child: SingleChildScrollView(
         controller: scrollV,
         child: LayoutBuilder(
           builder: (ctx, constraints) => Scrollbar(
-            controller: scrollH, thumbVisibility: true,
+            controller: scrollH,
+            thumbVisibility: true,
             child: SingleChildScrollView(
               controller: scrollH,
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                constraints:
+                    BoxConstraints(minWidth: constraints.maxWidth),
                 child: DataTable(
                   headingRowColor: WidgetStateProperty.all(
-                    isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral50),
-                  dataRowMinHeight: 52,
+                      isDark
+                          ? AppTheme.darkSurfaceHigh
+                          : const Color(0xFFF0F4FF)),
+                  dataRowMinHeight: 56,
                   dataRowMaxHeight: double.infinity,
                   showCheckboxColumn: false,
                   headingTextStyle: const TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5, color: AppTheme.neutral500),
-                  columns: campos.map((c) {
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                      color: AppTheme.neutral500),
+                  columns: todasColunas.map((c) {
                     final nome = c['nome'] as String;
-                    final isSorted = sortColuna == nome;
+                    final colKey =
+                        c['isAuthor'] == true ? '_autor' : nome;
+                    final isSorted = sortColuna == colKey;
+                    final isAuthor = c['isAuthor'] == true;
+
                     return DataColumn(
                       label: InkWell(
-                        onTap: () => onSort(nome),
+                        onTap: () => onSort(colKey),
                         borderRadius: BorderRadius.circular(6),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text(nome.toUpperCase(),
-                              style: TextStyle(
-                                color: isSorted ? AppTheme.accentBlue : null,
-                                fontWeight: isSorted ? FontWeight.w700 : FontWeight.w600)),
-                            if (isSorted) ...[
-                              const SizedBox(width: 4),
-                              Icon(sortAsc ? Icons.arrow_upward_rounded
-                                  : Icons.arrow_downward_rounded,
-                                size: 12, color: AppTheme.accentBlue),
-                            ],
-                          ]),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 2),
+                          child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isAuthor) ...[
+                                  Icon(Icons.person_outline_rounded,
+                                      size: 12,
+                                      color: isSorted
+                                          ? AppTheme.accentTeal
+                                          : AppTheme.neutral400),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  nome.toUpperCase(),
+                                  style: TextStyle(
+                                      color: isSorted
+                                          ? (isAuthor
+                                              ? AppTheme.accentTeal
+                                              : AppTheme.accentBlue)
+                                          : null,
+                                      fontWeight: isSorted
+                                          ? FontWeight.w700
+                                          : FontWeight.w600),
+                                ),
+                                if (isSorted) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                      sortAsc
+                                          ? Icons.arrow_upward_rounded
+                                          : Icons
+                                              .arrow_downward_rounded,
+                                      size: 12,
+                                      color: isAuthor
+                                          ? AppTheme.accentTeal
+                                          : AppTheme.accentBlue),
+                                ],
+                              ]),
                         ),
                       ),
                     );
                   }).toList(),
                   rows: registos.map((entry) {
                     final dados = parseDados(entry);
-                    return DataRow(
-                      cells: campos.map((c) {
+                    final nomeAutor =
+                        entry['nome_utilizador']?.toString() ??
+                            'Desconhecido';
+
+                    return DataRow(cells: [
+                      // ── COLUNA AUTOR ────────────────────────────
+                      DataCell(_AuthorCell(
+                          nome: nomeAutor, isDark: isDark)),
+
+                      // ── COLUNAS DINÂMICAS ────────────────────────
+                      ...campos.map((c) {
                         final val = dados[c['nome']];
-                        final empty = val == null || val.toString().trim().isEmpty;
+                        final empty = val == null ||
+                            val.toString().trim().isEmpty;
                         if (empty) {
                           return DataCell(Text('—',
-                            style: TextStyle(
-                              color: isDark ? AppTheme.neutral600 : AppTheme.neutral300)));
+                              style: TextStyle(
+                                  color: isDark
+                                      ? AppTheme.neutral600
+                                      : AppTheme.neutral300)));
                         }
                         if (isImagem(val?.toString())) {
                           return DataCell(Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8),
                             child: GestureDetector(
-                              onTap: () => onViewImage(urlImagem(val.toString())),
+                              onTap: () => onViewImage(
+                                  urlImagem(val.toString())),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(urlImagem(val.toString()),
-                                  height: 44, width: 44, fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    height: 44, width: 44,
-                                    decoration: BoxDecoration(
-                                      color: isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100,
-                                      borderRadius: BorderRadius.circular(8)),
-                                    child: const Icon(Icons.broken_image, size: 18,
-                                      color: AppTheme.neutral400)))),
+                                borderRadius:
+                                    BorderRadius.circular(8),
+                                child: Image.network(
+                                    urlImagem(val.toString()),
+                                    height: 44,
+                                    width: 44,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        Container(
+                                            height: 44,
+                                            width: 44,
+                                            decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? AppTheme
+                                                        .darkSurfaceHigh
+                                                    : AppTheme
+                                                        .neutral100,
+                                                borderRadius:
+                                                    BorderRadius
+                                                        .circular(8)),
+                                            child: const Icon(
+                                                Icons.broken_image,
+                                                size: 18,
+                                                color: AppTheme
+                                                    .neutral400))),
+                              ),
                             ),
                           ));
                         }
                         return DataCell(Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12),
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 220),
+                            constraints: const BoxConstraints(
+                                maxWidth: 200),
                             child: Text(val.toString(),
-                              style: TextStyle(fontSize: 13,
-                                color: isDark ? const Color(0xFFCBD5E1) : AppTheme.neutral800)))));
-                      }).toList(),
-                    );
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark
+                                        ? const Color(0xFFCBD5E1)
+                                        : AppTheme.neutral800)),
+                          ),
+                        ));
+                      }),
+                    ]);
                   }).toList(),
                 ),
               ),
@@ -452,23 +866,181 @@ class _DataTableView extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTHOR CELL — chip visual com avatar e nome
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AuthorCell extends StatelessWidget {
+  final String nome;
+  final bool isDark;
+
+  const _AuthorCell({required this.nome, required this.isDark});
+
+  String get _initials {
+    final parts =
+        nome.trim().split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  // Gera uma cor consistente baseada no nome
+  Color _avatarColor() {
+    final colors = [
+      AppTheme.accentBlue,
+      AppTheme.accentTeal,
+      AppTheme.warning,
+      const Color(0xFF7C3AED),
+      const Color(0xFFEC4899),
+      AppTheme.success,
+    ];
+    final idx = nome.codeUnits.fold(0, (a, b) => a + b) % colors.length;
+    return colors[idx];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _avatarColor();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          CircleAvatar(
+            radius: 10,
+            backgroundColor: color.withOpacity(0.25),
+            child: Text(_initials,
+                style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: color)),
+          ),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 130),
+            child: Text(nome,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color)),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COLUMN CHIP
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ColumnChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool isAuthor;
+
+  const _ColumnChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.isAuthor = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor =
+        isAuthor ? AppTheme.accentTeal : AppTheme.accentBlue;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? activeColor
+              : (isDark
+                  ? AppTheme.darkSurfaceHigh
+                  : AppTheme.neutral100),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: selected
+                  ? activeColor
+                  : (isDark
+                      ? AppTheme.darkBorder
+                      : AppTheme.neutral200))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (isAuthor) ...[
+            Icon(Icons.person_outline_rounded,
+                size: 11,
+                color: selected
+                    ? Colors.white
+                    : (isDark
+                        ? AppTheme.neutral400
+                        : AppTheme.neutral600)),
+            const SizedBox(width: 4),
+          ],
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected
+                      ? FontWeight.w600
+                      : FontWeight.w400,
+                  color: selected
+                      ? Colors.white
+                      : (isDark
+                          ? AppTheme.neutral300
+                          : AppTheme.neutral600))),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMPTY STATES
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _EmptyData extends StatelessWidget {
   final bool isDark;
   const _EmptyData({required this.isDark});
+
   @override
   Widget build(BuildContext context) {
-    return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(width: 72, height: 72,
-        decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100,
-          borderRadius: BorderRadius.circular(20)),
-        child: Icon(Icons.table_chart_outlined, size: 32,
-          color: isDark ? AppTheme.neutral500 : AppTheme.neutral400)),
+    return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+              color: isDark
+                  ? AppTheme.darkSurfaceHigh
+                  : AppTheme.neutral100,
+              borderRadius: BorderRadius.circular(20)),
+          child: Icon(Icons.table_chart_outlined,
+              size: 32,
+              color: isDark
+                  ? AppTheme.neutral500
+                  : AppTheme.neutral400)),
       const SizedBox(height: 16),
-      const Text('Sem registos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      const Text('Sem registos',
+          style:
+              TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
       const SizedBox(height: 6),
       const Text('Ainda não existem dados submetidos nesta pasta.',
-        style: TextStyle(fontSize: 13, color: AppTheme.neutral400)),
+          style: TextStyle(
+              fontSize: 13, color: AppTheme.neutral400)),
     ]));
   }
 }
@@ -477,16 +1049,23 @@ class _NoResults extends StatelessWidget {
   final bool isDark;
   final String query;
   const _NoResults({required this.isDark, required this.query});
+
   @override
   Widget build(BuildContext context) {
-    return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.search_off_rounded, size: 48,
-        color: isDark ? AppTheme.neutral600 : AppTheme.neutral300),
+    return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.search_off_rounded,
+          size: 48,
+          color:
+              isDark ? AppTheme.neutral600 : AppTheme.neutral300),
       const SizedBox(height: 12),
-      const Text('Sem resultados', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      const Text('Sem resultados',
+          style:
+              TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
       const SizedBox(height: 6),
       Text('Nenhum registo encontrado para "$query"',
-        style: const TextStyle(fontSize: 13, color: AppTheme.neutral400)),
+          style: const TextStyle(
+              fontSize: 13, color: AppTheme.neutral400)),
     ]));
   }
 }

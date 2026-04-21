@@ -198,4 +198,24 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// ─── PESQUISAR POR TEXTO (nome ou email) ───────────────────────────────────
+router.get('/pesquisar/:texto', async (req, res) => {
+  try {
+    const texto = `%${req.params.texto}%`;
+    const [rows] = await pool.execute(
+      `SELECT id, nome, email, perfil
+       FROM utilizadores
+       WHERE nome LIKE ? OR email LIKE ?
+       ORDER BY nome ASC
+       LIMIT 10`,
+      [texto, texto]
+    );
+    logger.success(`Pesquisa "${req.params.texto}": ${rows.length} resultados`);
+    res.json({ success: true, utilizadores: rows });
+  } catch (error) {
+    logger.error('Erro em GET /utilizadores/pesquisar/:texto', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
