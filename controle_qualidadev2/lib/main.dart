@@ -7,17 +7,11 @@ import 'config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Exibir configuração da aplicação
   AppConfig.printConfig();
-
   final user = await Session.getUser();
-
-  // Carrega o tema da API só se houver sessão ativa
   if (user != null) {
     await AppTheme.loadTheme();
   }
-
   runApp(MyApp(initialUser: user));
 }
 
@@ -29,25 +23,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: AppTheme.themeMode,
-      builder: (context, currentMode, _) {
+      builder: (context, mode, _) {
         return MaterialApp(
-          title: 'Controle Qualidade FOENG',
+          title: 'FOENG · Controlo de Qualidade',
           debugShowCheckedModeBanner: false,
-          themeMode: currentMode,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF1A237E),
-              brightness: Brightness.light,
-            ),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF1A237E),
-              brightness: Brightness.dark,
-            ),
-            useMaterial3: true,
-          ),
+          themeMode: mode,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
           home: initialUser == null
               ? const LoginScreen()
               : DashboardScreen(perfil: initialUser!['perfil']),

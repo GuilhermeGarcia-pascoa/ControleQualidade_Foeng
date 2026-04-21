@@ -11,7 +11,6 @@ import 'admin_panel_screen.dart';
 class DashboardScreen extends StatefulWidget {
   final String perfil;
   const DashboardScreen({Key? key, required this.perfil}) : super(key: key);
-
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
@@ -42,36 +41,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _projetosFiltrados = texto.isEmpty
           ? List.from(projetos)
-          : projetos
-              .where((p) =>
-                  p.nome.toLowerCase().contains(texto) ||
-                  p.descricao.toLowerCase().contains(texto))
-              .toList();
-
+          : projetos.where((p) =>
+              p.nome.toLowerCase().contains(texto) ||
+              p.descricao.toLowerCase().contains(texto)).toList();
       _nosPartilhadosFiltrados = texto.isEmpty
           ? List.from(_nosPartilhados)
-          : _nosPartilhados
-              .where((n) =>
-                  n.nome.toLowerCase().contains(texto) ||
-                  n.projetoNome.toLowerCase().contains(texto))
-              .toList();
+          : _nosPartilhados.where((n) =>
+              n.nome.toLowerCase().contains(texto) ||
+              n.projetoNome.toLowerCase().contains(texto)).toList();
     });
   }
 
   Future<void> _loadDados() async {
     setState(() => _loading = true);
     final isAdmin = widget.perfil == 'admin';
-
     final projetosData = isAdmin
         ? await DatabaseHelper.instance.getProjetos()
         : await DatabaseHelper.instance.getProjetosTrabalhador();
-
     final partilhados = !isAdmin
         ? await DatabaseHelper.instance.getNosPartilhados()
         : <NoPartilhado>[];
-
     if (!mounted) return;
-
     setState(() {
       projetos = projetosData;
       _projetosFiltrados = List.from(projetosData);
@@ -81,123 +71,128 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  // ─── LÓGICA DE GESTÃO ────────────────────────────────────────
-
   void _renomearProjeto(Projeto projeto) {
     final nomeC = TextEditingController(text: projeto.nome);
     final descC = TextEditingController(text: projeto.descricao);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Projeto'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: nomeC,
-                decoration: const InputDecoration(labelText: 'Nome')),
-            const SizedBox(height: 8),
-            TextField(
-                controller: descC,
-                decoration: const InputDecoration(labelText: 'Descrição')),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              if (nomeC.text.trim().isEmpty) return;
-              Navigator.pop(context);
-              await DatabaseHelper.instance.renomearProjeto(
-                  projeto.id!, nomeC.text.trim(), descC.text.trim());
-              _loadDados();
-              if (mounted) {
-                Toast.mostrar(context, 'Projeto atualizado!',
-                    tipo: ToastTipo.sucesso);
-              }
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
+    _showFormDialog(
+      title: 'Editar Projeto',
+      icon: Icons.edit_outlined,
+      fields: [
+        _DialogField(controller: nomeC, label: 'Nome do projeto'),
+        _DialogField(controller: descC, label: 'Descrição', optional: true),
+      ],
+      onConfirm: () async {
+        if (nomeC.text.trim().isEmpty) return;
+        await DatabaseHelper.instance.renomearProjeto(
+            projeto.id!, nomeC.text.trim(), descC.text.trim());
+        _loadDados();
+        if (mounted) Toast.mostrar(context, 'Projeto atualizado!', tipo: ToastTipo.sucesso);
+      },
     );
   }
 
   void _copiarProjeto(Projeto projeto) {
     final nomeC = TextEditingController(text: '${projeto.nome} (cópia)');
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Copiar Projeto'),
-        content: TextField(
-            controller: nomeC,
-            decoration: const InputDecoration(labelText: 'Nome da cópia')),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              if (nomeC.text.trim().isEmpty) return;
-              Navigator.pop(context);
-              await DatabaseHelper.instance
-                  .copiarProjeto(projeto.id!, nomeC.text.trim());
-              _loadDados();
-              if (mounted) {
-                Toast.mostrar(context, 'Projeto copiado!',
-                    tipo: ToastTipo.sucesso);
-              }
-            },
-            child: const Text('Copiar'),
-          ),
-        ],
-      ),
+    _showFormDialog(
+      title: 'Duplicar Projeto',
+      icon: Icons.copy_rounded,
+      fields: [_DialogField(controller: nomeC, label: 'Nome da cópia')],
+      onConfirm: () async {
+        if (nomeC.text.trim().isEmpty) return;
+        await DatabaseHelper.instance.copiarProjeto(projeto.id!, nomeC.text.trim());
+        _loadDados();
+        if (mounted) Toast.mostrar(context, 'Projeto duplicado!', tipo: ToastTipo.sucesso);
+      },
     );
   }
 
   void _mostrarDialogCriarProjeto() {
     final nomeC = TextEditingController();
     final descC = TextEditingController();
+    _showFormDialog(
+      title: 'Novo Projeto',
+      icon: Icons.add_rounded,
+      fields: [
+        _DialogField(controller: nomeC, label: 'Nome do projeto'),
+        _DialogField(controller: descC, label: 'Descrição', optional: true),
+      ],
+      onConfirm: () async {
+        if (nomeC.text.trim().isEmpty) return;
+        await DatabaseHelper.instance.criarProjeto({
+          'nome': nomeC.text.trim(),
+          'descricao': descC.text.trim(),
+        });
+        _loadDados();
+        if (mounted) Toast.mostrar(context, 'Projeto criado!', tipo: ToastTipo.sucesso);
+      },
+    );
+  }
+
+  void _showFormDialog({
+    required String title,
+    required IconData icon,
+    required List<_DialogField> fields,
+    required VoidCallback onConfirm,
+  }) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Novo Projeto'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: nomeC,
-                decoration:
-                    const InputDecoration(labelText: 'Nome do Projeto')),
-            const SizedBox(height: 8),
-            TextField(
-                controller: descC,
-                decoration: const InputDecoration(labelText: 'Descrição')),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              if (nomeC.text.trim().isEmpty) return;
-              Navigator.pop(context);
-              await DatabaseHelper.instance.criarProjeto({
-                'nome': nomeC.text.trim(),
-                'descricao': descC.text.trim(),
-              });
-              _loadDados();
-              if (mounted) {
-                Toast.mostrar(context, 'Projeto criado!',
-                    tipo: ToastTipo.sucesso);
-              }
-            },
-            child: const Text('Criar'),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentBluePale,
+                    borderRadius: BorderRadius.circular(10)),
+                  child: Icon(icon, color: AppTheme.accentBlue, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ]),
+              const SizedBox(height: 20),
+              for (final f in fields) ...[
+                TextField(
+                  controller: f.controller,
+                  decoration: InputDecoration(
+                    labelText: f.label + (f.optional ? ' (opcional)' : ''),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () { Navigator.pop(ctx); onConfirm(); },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Confirmar'),
+                  ),
+                ),
+              ]),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -205,67 +200,108 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _confirmarApagarProjeto(Projeto projeto) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Apagar Projeto'),
-        content: Text(
-            'Tens a certeza que queres apagar "${projeto.nome}"? Esta ação removerá todas as pastas e dados contidos.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Apagar',
-                  style: TextStyle(color: Colors.red))),
-        ],
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52, height: 52,
+                decoration: BoxDecoration(
+                  color: AppTheme.errorPale,
+                  borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 24),
+              ),
+              const SizedBox(height: 16),
+              const Text('Apagar projeto?',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text('Esta ação remove permanentemente "${projeto.nome}" e todos os seus dados.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: AppTheme.neutral500, height: 1.5)),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.error,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Apagar', style: TextStyle(color: Colors.white)),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
       ),
     );
-
     if (confirm == true) {
-      final sucesso =
-          await DatabaseHelper.instance.apagarProjeto(projeto.id!);
+      final sucesso = await DatabaseHelper.instance.apagarProjeto(projeto.id!);
       if (!mounted) return;
       if (sucesso) {
         _loadDados();
         Toast.mostrar(context, 'Projeto eliminado.', tipo: ToastTipo.sucesso);
       } else {
-        Toast.mostrar(context, 'Erro ao eliminar projeto.',
-            tipo: ToastTipo.erro);
+        Toast.mostrar(context, 'Erro ao eliminar.', tipo: ToastTipo.erro);
       }
     }
   }
 
-  // ─── LOGOUT ──────────────────────────────────────────────────
-  // CORRIGIDO: fecha o drawer primeiro, espera a animação e só depois
-  // mostra o diálogo usando o context raiz do widget (não o do drawer).
   void _confirmarLogout() async {
-    // 1. Fecha o drawer
     Navigator.of(context).pop();
-
-    // 2. Aguarda a animação de fecho do drawer
     await Future.delayed(const Duration(milliseconds: 300));
-
-    // 3. Verifica se o widget ainda está montado
     if (!mounted) return;
-
-    // 4. Mostra o diálogo usando o context do widget (não do drawer)
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Terminar Sessão'),
-        content: const Text('Tens a certeza que queres sair?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancelar')),
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Sair', style: TextStyle(color: Colors.red))),
-        ],
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 52, height: 52,
+              decoration: BoxDecoration(color: AppTheme.neutral100, borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.logout_rounded, color: AppTheme.neutral700, size: 24)),
+            const SizedBox(height: 16),
+            const Text('Terminar sessão?',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            const Text('Vai ser redirecionado para o ecrã de login.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: AppTheme.neutral500)),
+            const SizedBox(height: 24),
+            Row(children: [
+              Expanded(child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                child: const Text('Cancelar'))),
+              const SizedBox(width: 12),
+              Expanded(child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                child: const Text('Sair'))),
+            ]),
+          ]),
+        ),
       ),
     );
-
-    // 5. Se confirmado, faz logout e navega para o ecrã inicial
     if (confirm == true && mounted) {
       await Session.logout();
       if (!mounted) return;
@@ -274,158 +310,206 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // ─── INTERFACE ───────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final isAdmin = widget.perfil == 'admin';
+    final total = _projetosFiltrados.length + _nosPartilhadosFiltrados.length;
 
     return Scaffold(
-      drawer: _buildDrawer(context),
+      drawer: _buildDrawer(context, isDark),
       body: RefreshIndicator(
         onRefresh: _loadDados,
+        color: AppTheme.accentBlue,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // ─── APP BAR ─────────────────────────────────────────
+            // ─── HEADER ────────────────────────────────────────────
             SliverAppBar(
-              expandedHeight: 140.0,
+              expandedHeight: 160,
               floating: false,
               pinned: true,
               elevation: 0,
-              backgroundColor: colorScheme.surface,
+              scrolledUnderElevation: 0,
+              backgroundColor: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
               leading: Builder(
-                builder: (context) => IconButton(
-                  icon: Icon(Icons.menu, color: colorScheme.onSurface),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
+                builder: (ctx) => IconButton(
+                  icon: Icon(Icons.menu_rounded,
+                    color: isDark ? const Color(0xFFCBD5E1) : AppTheme.neutral800),
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
                 ),
-              ),
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding:
-                    const EdgeInsetsDirectional.only(start: 16, bottom: 16),
-                title: Text(
-                  "Dashboard",
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-                background: Container(color: colorScheme.surface),
               ),
               actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
+                Container(
+                  margin: const EdgeInsets.only(right: 16),
                   child: CircleAvatar(
-                    backgroundColor: colorScheme.primaryContainer,
+                    radius: 18,
+                    backgroundColor: AppTheme.accentBlue.withOpacity(0.12),
                     child: Text(widget.perfil[0].toUpperCase(),
-                        style: TextStyle(
-                            color: colorScheme.onPrimaryContainer)),
+                      style: const TextStyle(color: AppTheme.accentBlue,
+                        fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ),
               ],
+              flexibleSpace: FlexibleSpaceBar(
+                titlePadding: const EdgeInsetsDirectional.only(start: 20, bottom: 16),
+                title: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Dashboard',
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900,
+                        fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+                    if (!_loading)
+                      Text('$total ${total == 1 ? 'projeto' : 'projetos'}',
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF64748B) : AppTheme.neutral400,
+                          fontSize: 12, fontWeight: FontWeight.w400)),
+                  ],
+                ),
+                background: Container(
+                  color: isDark ? AppTheme.darkSurfaceRaised : Colors.white),
+              ),
             ),
 
-            // ─── BARRA DE PESQUISA ────────────────────────────────
+            // ─── SEARCH ────────────────────────────────────────────
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: SearchBar(
-                  controller: _searchCtrl,
-                  hintText: "Procurar projeto ou pasta...",
-                  leading: Icon(Icons.search, color: colorScheme.primary),
-                  elevation: WidgetStateProperty.all(0.5),
-                  backgroundColor: WidgetStateProperty.all(
-                      colorScheme.surfaceContainerHighest.withOpacity(0.3)),
-                  shape: WidgetStateProperty.all(RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12))),
+              child: Container(
+                color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkSurface : AppTheme.neutral50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? AppTheme.darkBorder : AppTheme.neutral200),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900,
+                      fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Pesquisar projetos...',
+                      hintStyle: const TextStyle(color: AppTheme.neutral400, fontSize: 14),
+                      prefixIcon: const Icon(Icons.search_rounded,
+                        color: AppTheme.neutral400, size: 20),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded,
+                                color: AppTheme.neutral400, size: 18),
+                              onPressed: () { _searchCtrl.clear(); })
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 12),
+                      filled: false,
+                    ),
+                  ),
                 ),
               ),
             ),
 
+            // ─── DIVIDER ────────────────────────────────────────────
+            SliverToBoxAdapter(child: Divider(height: 1,
+              color: isDark ? AppTheme.darkBorder : AppTheme.neutral100)),
+
+            // ─── CONTENT ────────────────────────────────────────────
             if (_loading)
               const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppTheme.accentBlue)),
               )
             else if (isAdmin) ...[
-              // ─── ADMIN: PROJETOS ─────────────────────────────────
               if (_projetosFiltrados.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(
-                    child: Text('Nenhum projeto encontrado.',
-                        style: TextStyle(color: Colors.grey)),
+                  child: _EmptyState(
+                    icon: Icons.inventory_2_outlined,
+                    title: _searchCtrl.text.isEmpty
+                        ? 'Nenhum projeto ainda'
+                        : 'Sem resultados',
+                    subtitle: _searchCtrl.text.isEmpty
+                        ? 'Crie o seu primeiro projeto para começar'
+                        : 'Tente uma pesquisa diferente',
                   ),
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.only(
-                      left: 16, right: 16, top: 8, bottom: 80),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) => _buildProjectCard(
-                          _projetosFiltrados[index], isAdmin, colorScheme),
+                      (ctx, i) => _ProjectCard(
+                        projeto: _projetosFiltrados[i],
+                        isAdmin: true,
+                        onTap: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => NosScreen(
+                            projeto: _projetosFiltrados[i], perfil: widget.perfil)))
+                              .then((_) => _loadDados()),
+                        onRename: () => _renomearProjeto(_projetosFiltrados[i]),
+                        onDuplicate: () => _copiarProjeto(_projetosFiltrados[i]),
+                        onDelete: () => _confirmarApagarProjeto(_projetosFiltrados[i]),
+                        onMembers: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => GerirMembrosScreen(
+                            projeto: _projetosFiltrados[i]))),
+                      ),
                       childCount: _projetosFiltrados.length,
                     ),
                   ),
                 ),
             ] else ...[
-              // ─── TRABALHADOR: PROJETOS + PASTAS PARTILHADAS ──────
-
               if (_projetosFiltrados.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: Text('Projetos',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurfaceVariant)),
-                  ),
-                ),
+                SliverToBoxAdapter(child: _SectionHeader(label: 'Os meus projetos',
+                  count: _projetosFiltrados.length)),
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) => _buildProjectCard(
-                          _projetosFiltrados[index], false, colorScheme),
+                      (ctx, i) => _ProjectCard(
+                        projeto: _projetosFiltrados[i],
+                        isAdmin: false,
+                        onTap: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => NosScreen(
+                            projeto: _projetosFiltrados[i], perfil: widget.perfil)))
+                              .then((_) => _loadDados()),
+                      ),
                       childCount: _projetosFiltrados.length,
                     ),
                   ),
                 ),
               ],
-
               if (_nosPartilhadosFiltrados.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                    child: Text('Pastas partilhadas',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurfaceVariant)),
-                  ),
-                ),
+                SliverToBoxAdapter(child: _SectionHeader(label: 'Partilhado comigo',
+                  count: _nosPartilhadosFiltrados.length)),
                 SliverPadding(
-                  padding: const EdgeInsets.only(
-                      left: 16, right: 16, bottom: 80),
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) => _buildSharedFolderCard(
-                          _nosPartilhadosFiltrados[index], colorScheme),
+                      (ctx, i) => _SharedFolderCard(
+                        no: _nosPartilhadosFiltrados[i],
+                        onTap: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => NosScreen(
+                            projeto: _nosPartilhadosFiltrados[i].toProjeto(),
+                            perfil: widget.perfil,
+                            pai: _nosPartilhadosFiltrados[i].toNo(),
+                            breadcrumb: [_nosPartilhadosFiltrados[i].projetoNome,
+                              ..._nosPartilhadosFiltrados[i].breadcrumb],
+                          ))).then((_) => _loadDados()),
+                      ),
                       childCount: _nosPartilhadosFiltrados.length,
                     ),
                   ),
                 ),
               ],
-
-              if (_projetosFiltrados.isEmpty &&
-                  _nosPartilhadosFiltrados.isEmpty)
-                const SliverFillRemaining(
+              if (_projetosFiltrados.isEmpty && _nosPartilhadosFiltrados.isEmpty)
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(
-                    child: Text('Nenhum conteúdo partilhado.',
-                        style: TextStyle(color: Colors.grey)),
+                  child: _EmptyState(
+                    icon: Icons.folder_off_outlined,
+                    title: 'Nenhum conteúdo',
+                    subtitle: 'Ainda não foram partilhados projetos consigo',
                   ),
                 ),
             ],
@@ -435,307 +519,351 @@ class _DashboardScreenState extends State<DashboardScreen> {
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
               onPressed: _mostrarDialogCriarProjeto,
-              icon: const Icon(Icons.add),
-              label: const Text("Novo Projeto"),
+              backgroundColor: AppTheme.accentBlue,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Novo Projeto',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             )
           : null,
     );
   }
 
-  // ─── CARD DE PASTA PARTILHADA ─────────────────────────────
-  Widget _buildSharedFolderCard(
-      NoPartilhado no, ColorScheme colorScheme) {
-    final caminhoTexto =
-        no.breadcrumb.isNotEmpty ? no.breadcrumb.join(' › ') : '';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.primary.withOpacity(0.25)),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => NosScreen(
-              projeto: no.toProjeto(),
-              perfil: widget.perfil,
-              pai: no.toNo(),
-              breadcrumb: [no.projetoNome, ...no.breadcrumb],
-            ),
-          ),
-        ).then((_) => _loadDados()),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 44,
-                height: 44,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.folder_shared_rounded,
-                      color: colorScheme.primary, size: 22),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      no.nome,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      caminhoTexto.isNotEmpty
-                          ? '${no.projetoNome} › $caminhoTexto'
-                          : no.projetoNome,
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurfaceVariant),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right,
-                  color: colorScheme.outline, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── CARD DE PROJETO ──────────────────────────────────────
-  Widget _buildProjectCard(
-      Projeto projeto, bool isAdmin, ColorScheme colorScheme) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-            color: colorScheme.outlineVariant.withOpacity(0.5)),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => NosScreen(
-                        projeto: projeto, perfil: widget.perfil)))
-            .then((_) => _loadDados()),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              SizedBox(
-                width: 44,
-                height: 44,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.inventory_2_rounded,
-                      color: colorScheme.primary, size: 22),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      projeto.nome,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (projeto.descricao.isNotEmpty)
-                      Text(
-                        projeto.descricao,
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: colorScheme.onSurfaceVariant),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-              ),
-              if (isAdmin)
-                SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: PopupMenuButton<String>(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.more_vert,
-                        size: 18, color: colorScheme.onSurfaceVariant),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    onSelected: (valor) {
-                      if (valor == 'renomear') _renomearProjeto(projeto);
-                      if (valor == 'copiar') _copiarProjeto(projeto);
-                      if (valor == 'apagar') {
-                        _confirmarApagarProjeto(projeto);
-                      }
-                      if (valor == 'membros') {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    GerirMembrosScreen(projeto: projeto)));
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                          value: 'renomear',
-                          child: Row(children: [
-                            Icon(Icons.edit_outlined, size: 18),
-                            SizedBox(width: 8),
-                            Text('Editar')
-                          ])),
-                      const PopupMenuItem(
-                          value: 'membros',
-                          child: Row(children: [
-                            Icon(Icons.group_outlined, size: 18),
-                            SizedBox(width: 8),
-                            Text('Membros')
-                          ])),
-                      const PopupMenuItem(
-                          value: 'copiar',
-                          child: Row(children: [
-                            Icon(Icons.copy_rounded, size: 18),
-                            SizedBox(width: 8),
-                            Text('Duplicar')
-                          ])),
-                      const PopupMenuDivider(),
-                      const PopupMenuItem(
-                          value: 'apagar',
-                          child: Row(children: [
-                            Icon(Icons.delete_outline,
-                                color: Colors.red, size: 18),
-                            SizedBox(width: 8),
-                            Text('Apagar',
-                                style: TextStyle(color: Colors.red))
-                          ])),
-                    ],
-                  ),
-                )
-              else
-                Icon(Icons.chevron_right,
-                    color: colorScheme.outline, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── DRAWER ───────────────────────────────────────────────
-  Widget _buildDrawer(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _buildDrawer(BuildContext context, bool isDark) {
     final isAdmin = widget.perfil == 'admin';
-
     return Drawer(
-      child: Column(
-        children: [
-          UserAccountsDrawerHeader(
-            decoration: BoxDecoration(color: colorScheme.primary),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: colorScheme.onPrimary,
-              child: Icon(Icons.person,
-                  color: colorScheme.primary, size: 40),
-            ),
-            accountName: Text(widget.perfil.toUpperCase(),
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            accountEmail: const Text("Controle de Qualidade"),
-          ),
-
-          // ── Tema ──────────────────────────────────────────
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: AppTheme.themeMode,
-            builder: (context, mode, _) {
-              final isDark = mode == ThemeMode.dark;
-              return ListTile(
-                leading: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-                title: Text(isDark ? "Modo Claro" : "Modo Escuro"),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  AppTheme.changeTheme(!isDark);
-                },
-              );
-            },
-          ),
-
-          // ── Painel Admin (só visível para admins) ─────────
-          if (isAdmin) ...[
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(
-                Icons.admin_panel_settings_rounded,
-                color: colorScheme.primary,
-              ),
-              title: Text(
-                'Painel Admin',
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+      backgroundColor: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: Row(children: [
+                Container(
+                  width: 48, height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentBlue,
+                    borderRadius: BorderRadius.circular(14)),
+                  child: const Center(child: Text('F',
+                    style: TextStyle(color: Colors.white, fontSize: 22,
+                      fontWeight: FontWeight.w700))),
                 ),
-              ),
-              subtitle: const Text(
-                'Gerir utilizadores',
-                style: TextStyle(fontSize: 12),
-              ),
-              trailing: Icon(
-                Icons.chevron_right,
-                color: colorScheme.primary,
-                size: 20,
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AdminPanelScreen(),
-                  ),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('FOENG CQ',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 0.3)),
+                    Text(widget.perfil,
+                      style: const TextStyle(color: AppTheme.neutral400,
+                        fontSize: 12, letterSpacing: 0.2)),
+                  ],
+                )),
+              ]),
+            ),
+            Divider(height: 1, color: isDark ? AppTheme.darkBorder : AppTheme.neutral100),
+            const SizedBox(height: 8),
+
+            // Theme toggle
+            ValueListenableBuilder<ThemeMode>(
+              valueListenable: AppTheme.themeMode,
+              builder: (ctx, mode, _) {
+                final isDark = mode == ThemeMode.dark;
+                return _DrawerItem(
+                  icon: isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                  label: isDark ? 'Modo claro' : 'Modo escuro',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    AppTheme.changeTheme(!isDark);
+                  },
                 );
               },
             ),
-            const Divider(height: 1),
+
+            if (isAdmin) ...[
+              const SizedBox(height: 4),
+              Divider(height: 1, color: isDark ? AppTheme.darkBorder : AppTheme.neutral100),
+              const SizedBox(height: 4),
+              _DrawerItem(
+                icon: Icons.shield_outlined,
+                label: 'Painel de administração',
+                accent: true,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const AdminPanelScreen()));
+                },
+              ),
+            ],
+
+            const Spacer(),
+            Divider(height: 1, color: isDark ? AppTheme.darkBorder : AppTheme.neutral100),
+            const SizedBox(height: 4),
+            _DrawerItem(
+              icon: Icons.logout_rounded,
+              label: 'Terminar sessão',
+              danger: true,
+              onTap: _confirmarLogout,
+            ),
+            const SizedBox(height: 8),
           ],
+        ),
+      ),
+    );
+  }
+}
 
-          const Spacer(),
-          const Divider(),
+class _DrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool accent;
+  final bool danger;
 
-          // ── Logout ────────────────────────────────────────
-          // CORRIGIDO: chama _confirmarLogout() sem passar contexto do drawer
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Terminar Sessão',
-                style: TextStyle(color: Colors.red)),
-            onTap: _confirmarLogout,
+  const _DrawerItem({
+    required this.icon, required this.label, required this.onTap,
+    this.accent = false, this.danger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = danger ? AppTheme.error
+        : accent ? AppTheme.accentBlue
+        : null;
+    return ListTile(
+      dense: true,
+      leading: Icon(icon, size: 20, color: color),
+      title: Text(label,
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: color)),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  final int count;
+  const _SectionHeader({required this.label, required this.count});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      child: Row(
+        children: [
+          Text(label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600,
+              color: AppTheme.neutral400, letterSpacing: 0.8)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppTheme.neutral100,
+              borderRadius: BorderRadius.circular(20)),
+            child: Text('$count',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                color: AppTheme.neutral500)),
           ),
-          const SizedBox(height: 16),
         ],
       ),
     );
   }
+}
+
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  const _EmptyState({required this.icon, required this.title, required this.subtitle});
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100,
+                borderRadius: BorderRadius.circular(20)),
+              child: Icon(icon, size: 32,
+                color: isDark ? AppTheme.neutral500 : AppTheme.neutral400),
+            ),
+            const SizedBox(height: 16),
+            Text(title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            Text(subtitle, textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: AppTheme.neutral400, height: 1.5)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectCard extends StatelessWidget {
+  final Projeto projeto;
+  final bool isAdmin;
+  final VoidCallback onTap;
+  final VoidCallback? onRename;
+  final VoidCallback? onDuplicate;
+  final VoidCallback? onDelete;
+  final VoidCallback? onMembers;
+
+  const _ProjectCard({
+    required this.projeto, required this.isAdmin, required this.onTap,
+    this.onRename, this.onDuplicate, this.onDelete, this.onMembers,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.neutral200),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            // Icon
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: AppTheme.accentBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.inventory_2_outlined,
+                color: AppTheme.accentBlue, size: 20),
+            ),
+            const SizedBox(width: 14),
+            // Info
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(projeto.nome,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 15,
+                    color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (projeto.descricao.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(projeto.descricao,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.neutral400),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ],
+            )),
+            const SizedBox(width: 8),
+            // Action
+            if (isAdmin)
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_horiz_rounded, size: 20,
+                  color: isDark ? AppTheme.neutral500 : AppTheme.neutral400),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onSelected: (v) {
+                  if (v == 'rename') onRename?.call();
+                  if (v == 'members') onMembers?.call();
+                  if (v == 'duplicate') onDuplicate?.call();
+                  if (v == 'delete') onDelete?.call();
+                },
+                itemBuilder: (_) => [
+                  _menuItem('rename', Icons.edit_outlined, 'Editar'),
+                  _menuItem('members', Icons.group_outlined, 'Membros'),
+                  _menuItem('duplicate', Icons.copy_outlined, 'Duplicar'),
+                  const PopupMenuDivider(),
+                  _menuItem('delete', Icons.delete_outline_rounded, 'Apagar', danger: true),
+                ],
+              )
+            else
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.neutral300),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label,
+      {bool danger = false}) {
+    final color = danger ? AppTheme.error : null;
+    return PopupMenuItem(
+      value: value,
+      child: Row(children: [
+        Icon(icon, size: 16, color: color ?? AppTheme.neutral600),
+        const SizedBox(width: 10),
+        Text(label, style: TextStyle(fontSize: 14, color: color)),
+      ]),
+    );
+  }
+}
+
+class _SharedFolderCard extends StatelessWidget {
+  final NoPartilhado no;
+  final VoidCallback onTap;
+  const _SharedFolderCard({required this.no, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final path = no.breadcrumb.isNotEmpty
+        ? '${no.projetoNome} › ${no.breadcrumb.join(' › ')}'
+        : no.projetoNome;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF0D4C7A) : AppTheme.accentBlue.withOpacity(0.2)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            Container(width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: AppTheme.accentTeal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.folder_shared_outlined,
+                color: AppTheme.accentTeal, size: 20)),
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(no.nome,
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15,
+                    color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 3),
+                Text(path,
+                  style: const TextStyle(fontSize: 11, color: AppTheme.neutral400),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            )),
+            const Icon(Icons.chevron_right_rounded, color: AppTheme.neutral300),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogField {
+  final TextEditingController controller;
+  final String label;
+  final bool optional;
+  const _DialogField({required this.controller, required this.label, this.optional = false});
 }

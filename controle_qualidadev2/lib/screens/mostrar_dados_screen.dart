@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../database/database_helper.dart';
 import '../models/models.dart';
+import '../theme/app_theme.dart';
 import 'preencher_tabela_screen.dart';
 
 class MostrarDadosScreen extends StatefulWidget {
@@ -46,16 +47,10 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
 
   Future<void> _carregar() async {
     setState(() => _loading = true);
-    print("🔄 [MostrarDadosScreen] Iniciando carregamento de dados para noId=${widget.noId}");
     try {
-      print("⏳ [MostrarDadosScreen] Obtendo dados do nó...");
       final noData = await DatabaseHelper.instance.obterNoPorId(widget.noId);
-      
-      print("⏳ [MostrarDadosScreen] Chamando getCampos...");
       final camposRaw = await DatabaseHelper.instance.getCampos(widget.noId);
-      print("⏳ [MostrarDadosScreen] Chamando getRegistos...");
       final registosRaw = await DatabaseHelper.instance.getRegistos(widget.noId);
-      print("✅ [MostrarDadosScreen] Dados carregados: ${camposRaw.length} campos, ${registosRaw.length} registos");
       setState(() {
         _no = noData;
         _campos = camposRaw.map((c) => {'id': c.id, 'nome': c.nomeCampo}).toList();
@@ -64,15 +59,12 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
         _loading = false;
       });
     } catch (e) {
-      print("❌ [MostrarDadosScreen] Erro ao carregar dados: $e");
       setState(() => _loading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erro: $e', style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.red.shade800,
+        content: Text('Erro: $e'), backgroundColor: AppTheme.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ));
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
     }
   }
 
@@ -89,14 +81,11 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
       return reg['dados'] is String
           ? json.decode(reg['dados'])
           : Map<String, dynamic>.from(reg['dados']);
-    } catch (_) {
-      return {};
-    }
+    } catch (_) { return {}; }
   }
 
   void _aplicarFiltros() {
     var lista = List.from(_todos);
-
     if (_filtroBusca.isNotEmpty) {
       lista = lista.where((reg) {
         final dados = _parseDados(reg);
@@ -106,7 +95,6 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
         return dados.values.any((v) => v.toString().toLowerCase().contains(_filtroBusca));
       }).toList();
     }
-
     if (_sortColuna != null) {
       lista.sort((a, b) {
         final va = (_parseDados(a)[_sortColuna] ?? '').toString().toLowerCase();
@@ -117,7 +105,6 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
         return _sortAsc ? cmp : -cmp;
       });
     }
-
     _filtrados = lista;
   }
 
@@ -139,23 +126,16 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
     });
   }
 
-  bool get _temFiltros => _filtroBusca.isNotEmpty || _filtroColuna != null || _sortColuna != null;
-
-  // ─── HELPERS DE IMAGEM ────────────────────────────────────
+  bool get _temFiltros =>
+      _filtroBusca.isNotEmpty || _filtroColuna != null || _sortColuna != null;
 
   bool _isImagem(String? val) {
     if (val == null || val.isEmpty) return false;
     final lower = val.toLowerCase();
-    if (lower.startsWith('/uploads/')) return true;
-    if (lower.startsWith('http') &&
-        (lower.endsWith('.jpg') ||
-         lower.endsWith('.jpeg') ||
-         lower.endsWith('.png') ||
-         lower.endsWith('.gif') ||
-         lower.endsWith('.webp'))) {
-      return true;
-    }
-    return false;
+    return lower.startsWith('/uploads/') ||
+        (lower.startsWith('http') &&
+            (lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
+             lower.endsWith('.png') || lower.endsWith('.gif') || lower.endsWith('.webp')));
   }
 
   String _urlImagem(String caminho) {
@@ -169,378 +149,299 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(16),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: InteractiveViewer(
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: Image.network(
-                  url,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 200,
-                    height: 200,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: const Center(
-                      child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                    ),
-                  ),
-                  loadingBuilder: (_, child, progress) => progress == null
-                      ? child
-                      : Container(
-                          width: 200,
-                          height: 200,
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          child: const Center(child: CircularProgressIndicator()),
-                        ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: -12,
-              right: -12,
-              child: FloatingActionButton.small(
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-                onPressed: () => Navigator.pop(context),
-                child: const Icon(Icons.close),
-              ),
-            ),
-          ],
-        ),
+        child: Stack(clipBehavior: Clip.none, children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: InteractiveViewer(
+              minScale: 0.5, maxScale: 4.0,
+              child: Image.network(url, fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 200, height: 200,
+                  color: AppTheme.darkSurfaceHigh,
+                  child: const Center(child: Icon(Icons.broken_image, size: 48, color: AppTheme.neutral500))))),
+          ),
+          Positioned(top: -12, right: -12,
+            child: FloatingActionButton.small(
+              backgroundColor: Colors.white,
+              foregroundColor: AppTheme.neutral800,
+              onPressed: () => Navigator.pop(context),
+              child: const Icon(Icons.close_rounded))),
+        ]),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF5F7FA),
+      backgroundColor: isDark ? AppTheme.darkSurface : AppTheme.neutral50,
       appBar: AppBar(
+        backgroundColor: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Registos da Tabela', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            Text('Consulta e pesquisa de dados', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
-          ],
-        ),
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded,
+            color: isDark ? const Color(0xFFCBD5E1) : AppTheme.neutral800),
+          onPressed: () => Navigator.pop(context)),
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Registos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+            color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900)),
+          Text('${_filtrados.length} de ${_todos.length} entradas',
+            style: const TextStyle(fontSize: 11, color: AppTheme.neutral400)),
+        ]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Atualizar',
+            icon: const Icon(Icons.refresh_rounded, size: 20),
             onPressed: _carregar,
+            color: isDark ? AppTheme.neutral400 : AppTheme.neutral600,
           ),
-          const SizedBox(width: 8),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1,
+            color: isDark ? AppTheme.darkBorder : AppTheme.neutral100)),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.accentBlue))
           : _todos.isEmpty
-              ? _buildEmpty(theme)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildFiltros(theme, isDark),
-                    _buildInfoBar(theme),
-                    Expanded(child: _buildTabela(theme, isDark)),
-                  ],
-                ),
+              ? _EmptyData(isDark: isDark)
+              : Column(children: [
+                  // ─── FILTER BAR ──────────────────────────────────────
+                  Container(
+                    color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Column(children: [
+                      // Search
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkSurface : AppTheme.neutral50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? AppTheme.darkBorder : AppTheme.neutral200)),
+                        child: Row(children: [
+                          const Padding(padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Icon(Icons.search_rounded,
+                              color: AppTheme.neutral400, size: 18)),
+                          Expanded(child: TextField(
+                            controller: _searchCtrl,
+                            style: TextStyle(fontSize: 13,
+                              color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900),
+                            decoration: const InputDecoration(
+                              hintText: 'Pesquisar registos...',
+                              hintStyle: TextStyle(color: AppTheme.neutral400, fontSize: 13),
+                              border: InputBorder.none,
+                              filled: false,
+                              contentPadding: EdgeInsets.symmetric(vertical: 10)),
+                          )),
+                          if (_temFiltros)
+                            IconButton(
+                              icon: const Icon(Icons.filter_alt_off_rounded,
+                                color: AppTheme.error, size: 18),
+                              onPressed: _limparFiltros,
+                              tooltip: 'Limpar filtros'),
+                        ]),
+                      ),
+                      // Column chips
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 32,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _ColumnChip(
+                              label: 'Todos', selected: _filtroColuna == null,
+                              onTap: () => setState(() { _filtroColuna = null; _aplicarFiltros(); })),
+                            const SizedBox(width: 6),
+                            ..._campos.map((c) => Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: _ColumnChip(
+                                label: c['nome'] as String,
+                                selected: _filtroColuna == c['nome'],
+                                onTap: () => setState(() {
+                                  _filtroColuna = _filtroColuna == c['nome'] ? null : c['nome'];
+                                  _aplicarFiltros();
+                                })),
+                            )),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ]),
+                  ),
+                  Divider(height: 1, color: isDark ? AppTheme.darkBorder : AppTheme.neutral100),
+                  // ─── TABLE ────────────────────────────────────────────
+                  Expanded(child: _filtrados.isEmpty
+                      ? _NoResults(isDark: isDark, query: _filtroBusca)
+                      : _DataTableView(
+                          campos: _campos,
+                          registos: _filtrados,
+                          sortColuna: _sortColuna,
+                          sortAsc: _sortAsc,
+                          isDark: isDark,
+                          scrollV: _scrollV,
+                          scrollH: _scrollH,
+                          onSort: _toggleSort,
+                          parseDados: _parseDados,
+                          isImagem: _isImagem,
+                          urlImagem: _urlImagem,
+                          onViewImage: _verImagemFullscreen,
+                        )),
+                ]),
       floatingActionButton: _no != null
           ? FloatingActionButton(
-              tooltip: 'Adicionar Registo',
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => PreencherTabelaScreen(no: _no!)),
-                );
-                if (result == true) {
-                  _carregar();
-                }
-              },
-              child: const Icon(Icons.add),
+              backgroundColor: AppTheme.accentBlue,
+              foregroundColor: Colors.white,
+              onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => PreencherTabelaScreen(no: _no!)))
+                  .then((ok) { if (ok == true) _carregar(); }),
+              child: const Icon(Icons.add_rounded),
             )
           : null,
     );
   }
+}
 
-  Widget _buildFiltros(ThemeData theme, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: InputDecoration(
-                    hintText: _filtroColuna != null
-                        ? 'Pesquisar em "$_filtroColuna"...'
-                        : 'Pesquisar em todos os campos...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _searchCtrl.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear_rounded),
-                            onPressed: () => _searchCtrl.clear(),
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: isDark ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.3) : theme.colorScheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                  ),
-                ),
-              ),
-              if (_temFiltros) ...[
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: IconButton(
-                    onPressed: _limparFiltros,
-                    icon: const Icon(Icons.filter_alt_off_rounded, color: Colors.red),
-                    tooltip: 'Limpar Filtros',
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                ChoiceChip(
-                  label: const Text('Todos'),
-                  selected: _filtroColuna == null,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  onSelected: (val) => setState(() {
-                    _filtroColuna = null;
-                    _aplicarFiltros();
-                  }),
-                ),
-                const SizedBox(width: 8),
-                ..._campos.map((c) {
-                  final nome = c['nome'] as String;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(nome),
-                      selected: _filtroColuna == nome,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      onSelected: (val) => setState(() {
-                        _filtroColuna = _filtroColuna == nome ? null : nome;
-                        _aplicarFiltros();
-                      }),
-                    ),
-                  );
-                }).toList(),
-              ],
-            ),
-          ),
-        ],
+class _ColumnChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ColumnChip({required this.label, required this.selected, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.accentBlue
+              : (isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppTheme.accentBlue
+                : (isDark ? AppTheme.darkBorder : AppTheme.neutral200))),
+        child: Text(label,
+          style: TextStyle(
+            fontSize: 12, fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? Colors.white
+                : (isDark ? AppTheme.neutral300 : AppTheme.neutral600))),
       ),
     );
   }
+}
 
-  Widget _buildInfoBar(ThemeData theme) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.bar_chart_rounded, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              _temFiltros
-                  ? 'A mostrar ${_filtrados.length} de ${_todos.length} registos'
-                  : 'Total de ${_todos.length} registos submetidos',
-              style: TextStyle(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface),
-            ),
-          ),
-          if (_sortColuna != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Text('Ordem: $_sortColuna', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 4),
-                  Icon(_sortAsc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 14),
-                ],
-              ),
-            ),
-          ]
-        ],
-      ),
-    );
-  }
+class _DataTableView extends StatelessWidget {
+  final List<Map<String, dynamic>> campos;
+  final List<dynamic> registos;
+  final String? sortColuna;
+  final bool sortAsc;
+  final bool isDark;
+  final ScrollController scrollV;
+  final ScrollController scrollH;
+  final void Function(String) onSort;
+  final Map<String, dynamic> Function(dynamic) parseDados;
+  final bool Function(String?) isImagem;
+  final String Function(String) urlImagem;
+  final void Function(String) onViewImage;
 
-  Widget _buildTabela(ThemeData theme, bool isDark) {
-    if (_filtrados.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded, size: 64, color: theme.disabledColor),
-            const SizedBox(height: 16),
-            const Text('Sem resultados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('Nenhum registo encontrado para "$_filtroBusca"', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6))),
-          ],
-        ),
-      );
-    }
+  const _DataTableView({
+    required this.campos, required this.registos, required this.sortColuna,
+    required this.sortAsc, required this.isDark, required this.scrollV,
+    required this.scrollH, required this.onSort, required this.parseDados,
+    required this.isImagem, required this.urlImagem, required this.onViewImage,
+  });
 
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      elevation: isDark ? 1 : 0.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isDark ? BorderSide.none : BorderSide(color: theme.dividerColor.withOpacity(0.5)),
-      ),
-      clipBehavior: Clip.antiAlias, // Para a tabela não sair dos cantos arredondados
-      child: Scrollbar(
-        controller: _scrollV,
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          controller: _scrollV,
-          physics: const BouncingScrollPhysics(),
-          child: LayoutBuilder(
-            builder: (ctx, constraints) => Scrollbar(
-              controller: _scrollH,
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                controller: _scrollH,
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(theme.colorScheme.surfaceContainerHighest.withOpacity(isDark ? 0.3 : 0.5)),
-                    dataRowMinHeight: 56,
-                    dataRowMaxHeight: double.infinity,
-                    showCheckboxColumn: false,
-                    columns: _campos.map((c) {
-                      final nome = c['nome'] as String;
-                      final isSorted = _sortColuna == nome;
-                      return DataColumn(
-                        label: InkWell(
-                          onTap: () => _toggleSort(nome),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  nome.toUpperCase(),
-                                  style: TextStyle(
-                                    fontWeight: isSorted ? FontWeight.bold : FontWeight.w600,
-                                    color: isSorted ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                if (isSorted) ...[
-                                  const SizedBox(width: 4),
-                                  Icon(_sortAsc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 16, color: theme.colorScheme.primary),
-                                ],
-                              ],
-                            ),
-                          ),
+  @override
+  Widget build(BuildContext context) {
+    return Scrollbar(
+      controller: scrollV, thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: scrollV,
+        child: LayoutBuilder(
+          builder: (ctx, constraints) => Scrollbar(
+            controller: scrollH, thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: scrollH,
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  headingRowColor: WidgetStateProperty.all(
+                    isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral50),
+                  dataRowMinHeight: 52,
+                  dataRowMaxHeight: double.infinity,
+                  showCheckboxColumn: false,
+                  headingTextStyle: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5, color: AppTheme.neutral500),
+                  columns: campos.map((c) {
+                    final nome = c['nome'] as String;
+                    final isSorted = sortColuna == nome;
+                    return DataColumn(
+                      label: InkWell(
+                        onTap: () => onSort(nome),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text(nome.toUpperCase(),
+                              style: TextStyle(
+                                color: isSorted ? AppTheme.accentBlue : null,
+                                fontWeight: isSorted ? FontWeight.w700 : FontWeight.w600)),
+                            if (isSorted) ...[
+                              const SizedBox(width: 4),
+                              Icon(sortAsc ? Icons.arrow_upward_rounded
+                                  : Icons.arrow_downward_rounded,
+                                size: 12, color: AppTheme.accentBlue),
+                            ],
+                          ]),
                         ),
-                      );
-                    }).toList(),
-                    rows: _filtrados.map((entry) {
-                      final dados = _parseDados(entry);
-                      return DataRow(
-                        cells: _campos.map((c) {
-                          final val = dados[c['nome']];
-                          final empty = val == null || val.toString().trim().isEmpty;
-
-                          if (empty) {
-                            return DataCell(Text('—', style: TextStyle(color: theme.disabledColor)));
-                          }
-
-                          // ─── CÉLULA DE IMAGEM ───
-                          if (_isImagem(val?.toString())) {
-                            return DataCell(
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                child: GestureDetector(
-                                  onTap: () => _verImagemFullscreen(_urlImagem(val.toString())),
-                                  child: Hero(
-                                    tag: val.toString(), // Efeito suave ao abrir a imagem
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        boxShadow: [
-                                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))
-                                        ],
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          _urlImagem(val.toString()),
-                                          height: 48,
-                                          width: 48,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Container(
-                                            height: 48, width: 48,
-                                            color: theme.colorScheme.surfaceContainerHighest,
-                                            child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-
-                          // ─── CÉLULA DE TEXTO NORMAL ───
-                          return DataCell(
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12.0),
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 250),
-                                child: Text(
-                                  val.toString(),
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
+                      ),
+                    );
+                  }).toList(),
+                  rows: registos.map((entry) {
+                    final dados = parseDados(entry);
+                    return DataRow(
+                      cells: campos.map((c) {
+                        final val = dados[c['nome']];
+                        final empty = val == null || val.toString().trim().isEmpty;
+                        if (empty) {
+                          return DataCell(Text('—',
+                            style: TextStyle(
+                              color: isDark ? AppTheme.neutral600 : AppTheme.neutral300)));
+                        }
+                        if (isImagem(val?.toString())) {
+                          return DataCell(Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: GestureDetector(
+                              onTap: () => onViewImage(urlImagem(val.toString())),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(urlImagem(val.toString()),
+                                  height: 44, width: 44, fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    height: 44, width: 44,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100,
+                                      borderRadius: BorderRadius.circular(8)),
+                                    child: const Icon(Icons.broken_image, size: 18,
+                                      color: AppTheme.neutral400)))),
                             ),
-                          );
-                        }).toList(),
-                      );
-                    }).toList(),
-                  ),
+                          ));
+                        }
+                        return DataCell(Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 220),
+                            child: Text(val.toString(),
+                              style: TextStyle(fontSize: 13,
+                                color: isDark ? const Color(0xFFCBD5E1) : AppTheme.neutral800)))));
+                      }).toList(),
+                    );
+                  }).toList(),
                 ),
               ),
             ),
@@ -549,29 +450,43 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen> {
       ),
     );
   }
+}
 
-  Widget _buildEmpty(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.table_chart_outlined, size: 64, color: theme.disabledColor),
-          ),
-          const SizedBox(height: 24),
-          const Text('Sem registos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(
-            'Ainda não existem dados submetidos nesta pasta.',
-            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 15),
-          ),
-        ],
-      ),
-    );
+class _EmptyData extends StatelessWidget {
+  final bool isDark;
+  const _EmptyData({required this.isDark});
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(width: 72, height: 72,
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100,
+          borderRadius: BorderRadius.circular(20)),
+        child: Icon(Icons.table_chart_outlined, size: 32,
+          color: isDark ? AppTheme.neutral500 : AppTheme.neutral400)),
+      const SizedBox(height: 16),
+      const Text('Sem registos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 6),
+      const Text('Ainda não existem dados submetidos nesta pasta.',
+        style: TextStyle(fontSize: 13, color: AppTheme.neutral400)),
+    ]));
+  }
+}
+
+class _NoResults extends StatelessWidget {
+  final bool isDark;
+  final String query;
+  const _NoResults({required this.isDark, required this.query});
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.search_off_rounded, size: 48,
+        color: isDark ? AppTheme.neutral600 : AppTheme.neutral300),
+      const SizedBox(height: 12),
+      const Text('Sem resultados', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 6),
+      Text('Nenhum registo encontrado para "$query"',
+        style: const TextStyle(fontSize: 13, color: AppTheme.neutral400)),
+    ]));
   }
 }

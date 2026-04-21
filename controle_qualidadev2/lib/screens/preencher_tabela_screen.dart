@@ -3,6 +3,7 @@ import '../models/models.dart';
 import '../database/database_helper.dart';
 import '../widgets/campo_widget.dart';
 import '../utils/toast.dart';
+import '../theme/app_theme.dart';
 
 class PreencherTabelaScreen extends StatefulWidget {
   final No no;
@@ -17,6 +18,7 @@ class _PreencherTabelaScreenState extends State<PreencherTabelaScreen> {
   Map<String, dynamic> dadosPreenchidos = {};
   bool _loading = true;
   bool _salvando = false;
+  int _preenchidos = 0;
 
   @override
   void initState() {
@@ -27,48 +29,46 @@ class _PreencherTabelaScreenState extends State<PreencherTabelaScreen> {
   void _loadCampos() async {
     try {
       final data = await DatabaseHelper.instance.getCampos(widget.no.id!);
-      setState(() {
-        campos = data;
-        _loading = false;
-      });
+      setState(() { campos = data; _loading = false; });
     } catch (e) {
       setState(() => _loading = false);
       Toast.mostrar(context, 'Erro ao carregar campos', tipo: ToastTipo.erro);
     }
   }
 
-  void _salvarRegisto() async {
+  void _onValueChanged(String nome, dynamic valor) {
+    setState(() {
+      dadosPreenchidos[nome] = valor;
+      _preenchidos = dadosPreenchidos.values
+          .where((v) => v != null && v.toString().isNotEmpty).length;
+    });
+  }
+
+  Future<void> _salvarRegisto() async {
     if (dadosPreenchidos.isEmpty) {
-      Toast.mostrar(context, 'Preencha pelo menos um campo antes de submeter!', tipo: ToastTipo.aviso);
+      Toast.mostrar(context, 'Preencha pelo menos um campo', tipo: ToastTipo.aviso);
       return;
     }
-
     for (final campo in campos) {
       final valor = dadosPreenchidos[campo.nomeCampo];
       if (campo.obrigatorio == 1 && (valor == null || valor.toString().isEmpty)) {
-        Toast.mostrar(context, 'O campo "${campo.nomeCampo}" é obrigatório!', tipo: ToastTipo.erro);
+        Toast.mostrar(context, '"${campo.nomeCampo}" é obrigatório', tipo: ToastTipo.erro);
         return;
       }
     }
-
     setState(() => _salvando = true);
-
     try {
-      final sucesso = await DatabaseHelper.instance.inserirRegisto({
-        'no_id': widget.no.id,
-        'dados': dadosPreenchidos,
-      });
-
+      final ok = await DatabaseHelper.instance.inserirRegisto({
+        'no_id': widget.no.id, 'dados': dadosPreenchidos});
       if (!mounted) return;
-
-      if (sucesso) {
-        Toast.mostrar(context, 'Registo guardado com sucesso!', tipo: ToastTipo.sucesso);
+      if (ok) {
+        Toast.mostrar(context, 'Registo guardado com sucesso', tipo: ToastTipo.sucesso);
         Navigator.pop(context);
       } else {
-        Toast.mostrar(context, 'Erro ao guardar registo.', tipo: ToastTipo.erro);
+        Toast.mostrar(context, 'Erro ao guardar registo', tipo: ToastTipo.erro);
       }
     } catch (e) {
-      Toast.mostrar(context, 'Erro: ${e.toString()}', tipo: ToastTipo.erro);
+      Toast.mostrar(context, 'Erro: $e', tipo: ToastTipo.erro);
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
@@ -76,161 +76,212 @@ class _PreencherTabelaScreenState extends State<PreencherTabelaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final progress = campos.isEmpty ? 0.0 : _preenchidos / campos.length;
 
     return Scaffold(
-      // Fundo ligeiramente diferente para os cartões destacarem-se no modo claro
-      backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF5F7FA),
+      backgroundColor: isDark ? AppTheme.darkSurface : AppTheme.neutral50,
       appBar: AppBar(
+        backgroundColor: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.no.nome, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            Text(
-              'Preenchimento de formulário',
-              style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6)),
-            ),
-          ],
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.close_rounded,
+            color: isDark ? const Color(0xFFCBD5E1) : AppTheme.neutral800),
+          onPressed: () => Navigator.pop(context),
         ),
-        actions: const [
-        ],
-      ),
-      body: _buildBody(theme, isDark),
-      
-      bottomNavigationBar: (campos.isEmpty || _loading)
-          ? null
-          : SafeArea(
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                decoration: BoxDecoration(
-                  color: theme.scaffoldBackgroundColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -4),
-                    )
-                  ],
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: _salvando ? null : _salvarRegisto,
-                  icon: _salvando 
-                    ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onPrimary)) 
-                    : const Icon(Icons.send_rounded),
-                  label: Text(
-                    _salvando ? 'A guardar...' : 'SUBMETER DADOS', 
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5)
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                ),
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(widget.no.nome,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2,
+              color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900)),
+          Text('Preenchimento de formulário',
+            style: const TextStyle(fontSize: 11, color: AppTheme.neutral400)),
+        ]),
+        actions: [
+          if (!_loading && campos.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Text('$_preenchidos/${campos.length}',
+                  style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600,
+                    color: AppTheme.neutral400)),
               ),
             ),
-    );
-  }
-
-  Widget _buildBody(ThemeData theme, bool isDark) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (campos.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.edit_off_rounded, size: 64, color: theme.disabledColor),
-            const SizedBox(height: 16),
-            const Text('Nenhum campo definido.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: campos.length,
-      itemBuilder: (context, index) {
-        final campo = campos[index];
-        final isObrigatorio = campo.obrigatorio == 1;
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: theme.dividerColor.withOpacity(isDark ? 0.3 : 0.8)),
-            boxShadow: [
-              if (!isDark)
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-            ],
+        ],
+        bottom: _loading || campos.isEmpty ? null : PreferredSize(
+          preferredSize: const Size.fromHeight(3),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: isDark ? AppTheme.darkBorder : AppTheme.neutral200,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              progress == 1.0 ? AppTheme.success : AppTheme.accentBlue),
+            minHeight: 3,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '${index + 1}', 
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        campo.nomeCampo,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                      ),
-                    ),
-                    if (isObrigatorio)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Obrigatório',
-                          style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                // O problema original das cores pretas resolve-se ajustando o código do CampoWidget!
-                CampoWidget(
-                  campo: campo,
-                  onValueChanged: (nomeCampo, valor) {
-                    setState(() => dadosPreenchidos[nomeCampo] = valor);
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.accentBlue))
+          : campos.isEmpty
+              ? _EmptyFields(isDark: isDark)
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                  itemCount: campos.length,
+                  itemBuilder: (ctx, i) {
+                    final campo = campos[i];
+                    final isRequired = campo.obrigatorio == 1;
+                    final isFilled = dadosPreenchidos[campo.nomeCampo] != null &&
+                        dadosPreenchidos[campo.nomeCampo].toString().isNotEmpty;
+
+                    return _FieldCard(
+                      index: i + 1,
+                      campo: campo,
+                      isRequired: isRequired,
+                      isFilled: isFilled,
+                      isDark: isDark,
+                      onValueChanged: _onValueChanged,
+                    );
                   },
                 ),
-              ],
+      bottomNavigationBar: _loading || campos.isEmpty ? null : _SubmitBar(
+        loading: _salvando,
+        progress: progress,
+        onSubmit: _salvarRegisto,
+        isDark: isDark,
+      ),
+    );
+  }
+}
+
+class _FieldCard extends StatelessWidget {
+  final int index;
+  final CampoDinamico campo;
+  final bool isRequired;
+  final bool isFilled;
+  final bool isDark;
+  final Function(String, dynamic) onValueChanged;
+
+  const _FieldCard({
+    required this.index, required this.campo, required this.isRequired,
+    required this.isFilled, required this.isDark, required this.onValueChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isFilled
+              ? AppTheme.accentBlue.withOpacity(0.3)
+              : (isDark ? AppTheme.darkBorder : AppTheme.neutral200)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Field header
+          Row(children: [
+            Container(
+              width: 26, height: 26,
+              decoration: BoxDecoration(
+                color: isFilled
+                    ? AppTheme.accentBlue.withOpacity(0.1)
+                    : (isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100),
+                shape: BoxShape.circle),
+              child: isFilled
+                  ? const Icon(Icons.check_rounded, size: 14, color: AppTheme.accentBlue)
+                  : Center(child: Text('$index',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                        color: AppTheme.neutral500))),
             ),
-          ),
-        );
-      },
+            const SizedBox(width: 10),
+            Expanded(child: Text(campo.nomeCampo,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral800))),
+            if (isRequired)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.errorPale,
+                  borderRadius: BorderRadius.circular(20)),
+                child: const Text('Obrigatório',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
+                    color: AppTheme.error))),
+          ]),
+          const SizedBox(height: 14),
+          CampoWidget(campo: campo, onValueChanged: onValueChanged),
+        ]),
+      ),
+    );
+  }
+}
+
+class _SubmitBar extends StatelessWidget {
+  final bool loading;
+  final double progress;
+  final VoidCallback onSubmit;
+  final bool isDark;
+
+  const _SubmitBar({required this.loading, required this.progress,
+    required this.onSubmit, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 12, 16,
+        MediaQuery.of(context).padding.bottom + 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+        border: Border(top: BorderSide(
+          color: isDark ? AppTheme.darkBorder : AppTheme.neutral200))),
+      child: SizedBox(
+        height: 52,
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: loading ? null : onSubmit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: progress == 1.0 ? AppTheme.success : AppTheme.accentBlue,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+          child: loading
+              ? const SizedBox(width: 20, height: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(progress == 1.0
+                    ? Icons.check_circle_rounded : Icons.send_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(loading ? 'A guardar...' : 'Submeter dados',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2)),
+                ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyFields extends StatelessWidget {
+  final bool isDark;
+  const _EmptyFields({required this.isDark});
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 72, height: 72,
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100,
+            borderRadius: BorderRadius.circular(20)),
+          child: Icon(Icons.edit_off_outlined, size: 32,
+            color: isDark ? AppTheme.neutral500 : AppTheme.neutral400)),
+        const SizedBox(height: 16),
+        const Text('Sem campos configurados',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        const Text('Adicione campos a esta pasta primeiro',
+          style: TextStyle(fontSize: 13, color: AppTheme.neutral400)),
+      ]),
     );
   }
 }
