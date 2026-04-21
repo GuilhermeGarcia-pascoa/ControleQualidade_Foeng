@@ -17,22 +17,37 @@ class DatabaseHelper {
 
   // ─── LOGIN ───────────────────────────────────────────────
   Future<Utilizador?> login(String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) return Utilizador.fromMap(data['user']);
+  try {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/login'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        // ✅ ADICIONAR ESTA LINHA:
+        if (data['token'] != null) {
+          await Session.saveToken(data['token'] as String);
+        }
+        return Utilizador.fromMap(data['user']);
       }
-      return null;
-    } catch (e) {
-      print("❌ ERRO login: $e");
-      return null;
     }
+    return null;
+  } catch (e) {
+    print("❌ ERRO login: $e");
+    return null;
   }
+}
+
+Future<Map<String, String>> _authHeaders() async {
+  final token = await Session.getToken();
+  return {
+    'Content-Type': 'application/json',
+    if (token != null && token.isNotEmpty)
+      'Authorization': 'Bearer $token',
+  };
+}
 
   // ─── PESQUISAR UTILIZADORES ───────────────────────────
   Future<List<Map<String, dynamic>>> procurarUtilizadoresPorTexto(
@@ -88,7 +103,7 @@ class DatabaseHelper {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/utilizadores/$userId/tema'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({'tema_escuro': temEscuro}),
       );
       return response.statusCode == 200;
@@ -153,7 +168,7 @@ class DatabaseHelper {
       final userId = await Session.getUserId();
       final response = await http.post(
         Uri.parse('$_baseUrl/projetos'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({
           'nome': projeto['nome'],
           'descricao': projeto['descricao'],
