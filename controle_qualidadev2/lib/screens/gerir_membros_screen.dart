@@ -49,10 +49,7 @@ class _GerirMembrosScreenState extends State<GerirMembrosScreen> {
     final resultados = await DatabaseHelper.instance.procurarUtilizadoresPorTexto(texto);
 
     final membroIds = membros.map((m) => m['id']).toSet();
-    final filtrados = resultados
-        .where((u) => u['perfil'] != 'admin' && u['perfil'] != 'gestor')
-        .where((u) => !membroIds.contains(u['id']))
-        .toList();
+    final filtrados = resultados.where((u) => !membroIds.contains(u['id'])).toList();
 
     if (!mounted) return;
 
@@ -112,11 +109,6 @@ class _GerirMembrosScreenState extends State<GerirMembrosScreen> {
 
       if (utilizador == null) {
         _showSnackBar('Utilizador não encontrado na base de dados!', Colors.red, Icons.error_outline_rounded);
-        return;
-      }
-
-      if (utilizador['perfil'] == 'admin' || utilizador['perfil'] == 'gestor') {
-        _showSnackBar('Administradores jÃ¡ tÃªm acesso total aos projetos.', Colors.orange, Icons.info_outline_rounded);
         return;
       }
 

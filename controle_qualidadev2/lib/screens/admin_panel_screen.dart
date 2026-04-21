@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/admin_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/session.dart';
 
 class AdminPanelScreen extends StatefulWidget {
@@ -21,11 +22,23 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   static const _roles = ['admin', 'gestor', 'utilizador'];
 
-  static const _roleColors = {
-    'admin': (bg: Color(0xFFEEEDFE), fg: Color(0xFF534AB7)),
-    'gestor': (bg: Color(0xFFE8F6EE), fg: Color(0xFF157347)),
-    'utilizador': (bg: Color(0xFFE6F1FB), fg: Color(0xFF185FA5)),
-  };
+  // Cores semânticas: cada role tem bg/fg para light e dark
+  ({Color bg, Color fg}) _coresRole(String role) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return switch (role) {
+      'admin' => isDark
+          ? (bg: const Color(0xFF3C3489), fg: const Color(0xFFCECBF6))
+          : (bg: const Color(0xFFEEEDFE), fg: const Color(0xFF534AB7)),
+      'gestor' => isDark
+          ? (bg: const Color(0xFF085041), fg: const Color(0xFF9FE1CB))
+          : (bg: const Color(0xFFE8F6EE), fg: const Color(0xFF0F6E56)),
+      _ => isDark
+          ? (bg: const Color(0xFF0C447C), fg: const Color(0xFFB5D4F4))
+          : (bg: const Color(0xFFE6F1FB), fg: const Color(0xFF185FA5)),
+    };
+  }
+
+  Color get _accentColor => const Color(0xFF534AB7);
 
   @override
   void initState() {
@@ -95,10 +108,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     }).toList();
   }
 
-  ({Color bg, Color fg}) _coresRole(String role) =>
-      _roleColors[role] ??
-      (bg: const Color(0xFFE6F1FB), fg: const Color(0xFF185FA5));
-
   void _abrirCriar() => _abrirModal(utilizador: null);
 
   void _abrirEditar(UtilizadorAdmin u) => _abrirModal(utilizador: u);
@@ -112,10 +121,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _secaoTitulo(String titulo) {
     return Text(
       titulo,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF534AB7),
+        color: _accentColor,
       ),
     );
   }
@@ -146,11 +155,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   color: scheme.surface,
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(28)),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x14000000),
+                      color: Colors.black.withValues(alpha: 0.18),
                       blurRadius: 22,
-                      offset: Offset(0, -6),
+                      offset: const Offset(0, -6),
                     ),
                   ],
                 ),
@@ -160,6 +169,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Drag handle
                         Center(
                           child: Container(
                             margin: const EdgeInsets.only(top: 12, bottom: 10),
@@ -171,6 +181,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             ),
                           ),
                         ),
+                        // Header
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 4, 10, 0),
                           child: Row(
@@ -179,14 +190,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 width: 42,
                                 height: 42,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEEEDFE),
+                                  color: _accentColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Icon(
                                   isEdit
                                       ? Icons.manage_accounts_rounded
                                       : Icons.person_add_alt_1_rounded,
-                                  color: const Color(0xFF534AB7),
+                                  color: _accentColor,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -198,9 +209,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                       isEdit
                                           ? 'Editar utilizador'
                                           : 'Novo utilizador',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
+                                        color: scheme.onSurface,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
@@ -217,7 +229,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close_rounded),
+                                icon: Icon(Icons.close_rounded,
+                                    color: scheme.onSurfaceVariant),
                                 onPressed:
                                     aGuardar ? null : () => Navigator.pop(ctx),
                               ),
@@ -225,6 +238,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           ),
                         ),
                         const SizedBox(height: 18),
+                        // Dados principais
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Container(
@@ -243,6 +257,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 _secaoTitulo('Dados principais'),
                                 const SizedBox(height: 14),
                                 _campo(
+                                  ctx,
                                   'Nome',
                                   nomeCtrl,
                                   hint: 'Nome completo',
@@ -251,19 +266,21 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 ),
                                 const SizedBox(height: 14),
                                 _campo(
+                                  ctx,
                                   'Email',
                                   emailCtrl,
                                   hint: 'email@empresa.pt',
                                   keyboard: TextInputType.emailAddress,
-                                  prefixIcon:
-                                      const Icon(Icons.alternate_email_rounded,
-                                          size: 20),
+                                  prefixIcon: const Icon(
+                                      Icons.alternate_email_rounded,
+                                      size: 20),
                                 ),
                               ],
                             ),
                           ),
                         ),
                         const SizedBox(height: 14),
+                        // Segurança e perfil
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Container(
@@ -284,15 +301,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                 ),
                                 const SizedBox(height: 14),
                                 _campo(
+                                  ctx,
                                   isEdit ? 'Nova senha' : 'Senha',
                                   passwordCtrl,
                                   hint: isEdit
                                       ? 'Preenche apenas se quiseres alterar'
                                       : 'Defina uma senha',
                                   obscureText: !mostrarSenha,
-                                  prefixIcon:
-                                      const Icon(Icons.lock_outline_rounded,
-                                          size: 20),
+                                  prefixIcon: const Icon(
+                                      Icons.lock_outline_rounded,
+                                      size: 20),
                                   suffixIcon: IconButton(
                                     icon: Icon(
                                       mostrarSenha
@@ -334,8 +352,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                                   ),
                                           child: AnimatedContainer(
                                             duration: const Duration(
-                                              milliseconds: 180,
-                                            ),
+                                                milliseconds: 180),
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 12,
                                               vertical: 12,
@@ -357,10 +374,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                               children: [
                                                 Icon(
                                                   r == 'admin'
-                                                      ? Icons.verified_user_rounded
+                                                      ? Icons
+                                                          .verified_user_rounded
                                                       : r == 'gestor'
-                                                          ? Icons.work_outline_rounded
-                                                          : Icons.person_outline_rounded,
+                                                          ? Icons
+                                                              .work_outline_rounded
+                                                          : Icons
+                                                              .person_outline_rounded,
                                                   size: 18,
                                                   color: ativo
                                                       ? cores.fg
@@ -392,6 +412,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
+                        // Botões de ação
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                           child: Row(
@@ -402,8 +423,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                               ],
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed:
-                                      aGuardar ? null : () => Navigator.pop(ctx),
+                                  onPressed: aGuardar
+                                      ? null
+                                      : () => Navigator.pop(ctx),
                                   style: OutlinedButton.styleFrom(
                                     minimumSize: const Size.fromHeight(48),
                                   ),
@@ -423,19 +445,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
                                           if (nome.isEmpty || email.isEmpty) {
                                             _mostrarMensagem(
-                                              'Preenche nome e email.',
-                                            );
+                                                'Preenche nome e email.');
                                             return;
                                           }
-
                                           if (!isEdit && password.isEmpty) {
                                             _mostrarMensagem(
-                                              'Preenche a senha do utilizador.',
-                                            );
+                                                'Preenche a senha do utilizador.');
                                             return;
                                           }
 
-                                          setModalState(() => aGuardar = true);
+                                          setModalState(
+                                              () => aGuardar = true);
                                           try {
                                             if (isEdit) {
                                               await _service.editarUtilizador(
@@ -461,27 +481,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
                                             if (!context.mounted) return;
                                             Navigator.pop(ctx);
-                                            _mostrarMensagem(
-                                              isEdit
-                                                  ? 'Utilizador atualizado com sucesso.'
-                                                  : 'Utilizador criado com sucesso.',
-                                            );
+                                            _mostrarMensagem(isEdit
+                                                ? 'Utilizador atualizado com sucesso.'
+                                                : 'Utilizador criado com sucesso.');
                                             await _carregar();
                                           } on AdminServiceException catch (e) {
                                             if (!context.mounted) return;
                                             _mostrarMensagem(e.mensagem);
-                                            setModalState(() => aGuardar = false);
+                                            setModalState(
+                                                () => aGuardar = false);
                                           } catch (_) {
                                             if (!context.mounted) return;
                                             _mostrarMensagem(
-                                              'Não foi possível guardar o utilizador.',
-                                            );
-                                            setModalState(() => aGuardar = false);
+                                                'Não foi possível guardar o utilizador.');
+                                            setModalState(
+                                                () => aGuardar = false);
                                           }
                                         },
                                   style: FilledButton.styleFrom(
                                     minimumSize: const Size.fromHeight(48),
-                                    backgroundColor: const Color(0xFF534AB7),
+                                    backgroundColor: _accentColor,
+                                    foregroundColor: Colors.white,
                                   ),
                                   child: aGuardar
                                       ? const SizedBox(
@@ -510,7 +530,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
+  /// Campo de texto com suporte a dark mode via scheme do contexto passado
   Widget _campo(
+    BuildContext ctx,
     String label,
     TextEditingController ctrl, {
     String? hint,
@@ -519,42 +541,42 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     Widget? prefixIcon,
     Widget? suffixIcon,
   }) {
+    final scheme = Theme.of(ctx).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF888780)),
+          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
           keyboardType: keyboard,
           obscureText: obscureText,
-          style: const TextStyle(fontSize: 14),
+          style: TextStyle(fontSize: 14, color: scheme.onSurface),
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: Colors.white,
+            // Em dark usa surfaceContainer, em light usa white
+            fillColor: scheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 12,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(width: 0.7),
+              borderSide: BorderSide(color: scheme.outline, width: 0.7),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: Color(0xFFD9DCE3), width: 0.8),
+              borderSide: BorderSide(color: scheme.outlineVariant, width: 0.8),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: Color(0xFF534AB7), width: 1.2),
+              borderSide: BorderSide(color: _accentColor, width: 1.2),
             ),
           ),
         ),
@@ -571,8 +593,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 context: ctx,
                 builder: (_) => AlertDialog(
                   title: const Text('Apagar utilizador'),
-                  content:
-                      Text('Tens a certeza que queres apagar ${u.nome}?'),
+                  content: Text('Tens a certeza que queres apagar ${u.nome}?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
@@ -603,19 +624,30 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Usa as cores específicas do tema da app
+    final containerColor = isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100;
+    final borderColor = isDark ? AppTheme.darkBorder : AppTheme.neutral200;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FB),
+      // Usa a cor de fundo do tema em vez de cor hardcoded
+      backgroundColor: isDark ? AppTheme.darkSurface : AppTheme.neutral50,
       appBar: AppBar(
         scrolledUnderElevation: 0,
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: scheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'Painel Admin',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface),
         ),
         actions: [
           Padding(
@@ -625,32 +657,34 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               icon: const Icon(Icons.person_add_rounded, size: 18),
               label: const Text('Criar'),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF534AB7),
+                backgroundColor: _accentColor,
+                foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                    fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
           ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(color: _accentColor),
+            )
           : _erro != null
               ? _buildErro()
               : RefreshIndicator(
                   onRefresh: _carregar,
+                  color: _accentColor,
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       SliverToBoxAdapter(child: _buildHero()),
-                      SliverToBoxAdapter(child: _buildSearch()),
-                      SliverToBoxAdapter(child: _buildFiltros()),
-                      SliverToBoxAdapter(child: _buildStats()),
-                      _buildLista(),
+                      SliverToBoxAdapter(child: _buildSearch(scheme, containerColor, borderColor)),
+                      SliverToBoxAdapter(child: _buildFiltros(scheme, containerColor)),
+                      SliverToBoxAdapter(child: _buildStats(scheme, containerColor, borderColor)),
+                      _buildLista(scheme, containerColor, borderColor),
                     ],
                   ),
                 ),
@@ -664,18 +698,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
+          // Gradiente mantém-se — funciona bem em ambos os temas
           gradient: const LinearGradient(
             colors: [Color(0xFF534AB7), Color(0xFF6C63D9)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1F534AB7),
-              blurRadius: 18,
-              offset: Offset(0, 10),
-            ),
-          ],
         ),
         child: Row(
           children: [
@@ -723,53 +751,44 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildSearch() {
+  Widget _buildSearch(ColorScheme scheme, Color containerColor, Color borderColor) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0F101828),
-              blurRadius: 16,
-              offset: Offset(0, 4),
+      child: SearchBar(
+        controller: _searchCtrl,
+        hintText: 'Pesquisar por nome ou email...',
+        leading: Icon(Icons.search_rounded,
+            size: 20, color: scheme.onSurfaceVariant),
+        trailing: [
+          if (_searchCtrl.text.isNotEmpty)
+            IconButton(
+              icon: Icon(Icons.close_rounded,
+                  size: 18, color: scheme.onSurfaceVariant),
+              onPressed: () {
+                _searchCtrl.clear();
+                _filtrar();
+              },
             ),
-          ],
+        ],
+        onChanged: (_) => _filtrar(),
+        // Usa as cores específicas do tema da app
+        backgroundColor: WidgetStatePropertyAll(containerColor),
+        elevation: const WidgetStatePropertyAll(0),
+        side: WidgetStatePropertyAll(
+            BorderSide(color: borderColor, width: 0.8)),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+          ),
         ),
-        child: SearchBar(
-          controller: _searchCtrl,
-          hintText: 'Pesquisar por nome ou email...',
-          leading: const Icon(Icons.search_rounded, size: 20),
-          trailing: [
-            if (_searchCtrl.text.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.close_rounded, size: 18),
-                onPressed: () {
-                  _searchCtrl.clear();
-                  _filtrar();
-                },
-              ),
-          ],
-          onChanged: (_) => _filtrar(),
-          backgroundColor: const WidgetStatePropertyAll(Colors.white),
-          elevation: const WidgetStatePropertyAll(0),
-          side: const WidgetStatePropertyAll(BorderSide.none),
-          shape: const WidgetStatePropertyAll(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(18)),
-            ),
-          ),
-          padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          ),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         ),
       ),
     );
   }
 
-  Widget _buildFiltros() {
+  Widget _buildFiltros(ColorScheme scheme, Color containerColor) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: SingleChildScrollView(
@@ -777,15 +796,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            _chip('Todos', ''),
-            ..._roles.map((r) => _chip(r[0].toUpperCase() + r.substring(1), r)),
+            _chip('Todos', '', scheme, containerColor),
+            ..._roles.map(
+                (r) => _chip(r[0].toUpperCase() + r.substring(1), r, scheme, containerColor)),
           ],
         ),
       ),
     );
   }
 
-  Widget _chip(String label, String role) {
+  Widget _chip(String label, String role, ColorScheme scheme, Color containerColor) {
     final ativo = _filtroRole == role;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -797,17 +817,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           _filtrar();
         },
         showCheckmark: false,
-        backgroundColor: Colors.white,
+        backgroundColor: containerColor,
         labelStyle: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: ativo ? Colors.white : const Color(0xFF525866),
+          color: ativo ? Colors.white : scheme.onSurfaceVariant,
         ),
-        selectedColor: const Color(0xFF534AB7),
+        selectedColor: scheme.primary,
         side: BorderSide(
-          color: ativo
-              ? const Color(0xFF534AB7)
-              : const Color(0xFFD7DBE4),
+          color: ativo ? scheme.primary : scheme.outlineVariant,
           width: 0.8,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -815,7 +833,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildStats() {
+  Widget _buildStats(ColorScheme scheme, Color containerColor, Color borderColor) {
     final total = _filtrados.length;
     final admins = _filtrados.where((u) => u.role == 'admin').length;
     final outros = total - admins;
@@ -823,26 +841,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         children: [
-          _statCard(
-            'Total',
-            total.toString(),
-            Icons.group_rounded,
-            const Color(0xFF534AB7),
-          ),
+          _statCard('Total', total.toString(), Icons.group_rounded,
+              scheme.primary, scheme, containerColor, borderColor),
           const SizedBox(width: 10),
-          _statCard(
-            'Admins',
-            admins.toString(),
-            Icons.verified_user_rounded,
-            const Color(0xFF0E8B6F),
-          ),
+          _statCard('Admins', admins.toString(), Icons.verified_user_rounded,
+              scheme.secondary, scheme, containerColor, borderColor),
           const SizedBox(width: 10),
-          _statCard(
-            'Outros',
-            outros.toString(),
-            Icons.person_outline_rounded,
-            const Color(0xFF185FA5),
-          ),
+          _statCard('Outros', outros.toString(), Icons.person_outline_rounded,
+              scheme.tertiary, scheme, containerColor, borderColor),
         ],
       ),
     );
@@ -853,20 +859,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     String valor,
     IconData icon,
     Color accent,
+    ColorScheme scheme,
+    Color containerColor,
+    Color borderColor,
   ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: containerColor,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0C101828),
-              blurRadius: 14,
-              offset: Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: borderColor, width: 0.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -875,7 +878,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
+                color: accent.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, size: 18, color: accent),
@@ -883,17 +886,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             const SizedBox(height: 12),
             Text(
               valor,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
+                color: scheme.onSurface,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF667085),
+                color: scheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -902,7 +906,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _buildLista() {
+  Widget _buildLista(ColorScheme scheme, Color containerColor, Color borderColor) {
     if (_filtrados.isEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
@@ -914,24 +918,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: containerColor,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Icon(
                   Icons.search_off_rounded,
                   size: 34,
-                  color: Colors.grey.shade400,
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 'Nenhum utilizador encontrado',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Experimenta ajustar a pesquisa ou o filtro.',
-                style: TextStyle(color: Color(0xFF667085)),
+                style: TextStyle(color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -943,32 +950,28 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       sliver: SliverList.separated(
         itemCount: _filtrados.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _userCard(_filtrados[i]),
+        itemBuilder: (_, i) => _userCard(_filtrados[i], scheme, containerColor, borderColor),
       ),
     );
   }
 
-  Widget _userCard(UtilizadorAdmin u) {
+  Widget _userCard(UtilizadorAdmin u, ColorScheme scheme, Color containerColor, Color borderColor) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cores = _coresRole(u.role);
     return InkWell(
       onTap: () => _abrirEditar(u),
       borderRadius: BorderRadius.circular(18),
       child: Ink(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: containerColor,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0C101828),
-              blurRadius: 14,
-              offset: Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: borderColor, width: 0.5),
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
+              // Avatar com iniciais
               Container(
                 width: 50,
                 height: 50,
@@ -993,27 +996,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   children: [
                     Text(
                       u.nome,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.mail_outline_rounded,
                           size: 14,
-                          color: Color(0xFF667085),
+                          color: scheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             u.email,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF667085),
+                              color: scheme.onSurfaceVariant,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -1025,12 +1030,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _roleBadge(u.role),
+                  _roleBadge(u.role, scheme, isDark),
                   const SizedBox(height: 8),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right_rounded,
                     size: 18,
-                    color: Color(0xFF98A2B3),
+                    color: scheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -1041,7 +1046,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _roleBadge(String role) {
+  Widget _roleBadge(String role, ColorScheme scheme, bool isDark) {
     final cores = _coresRole(role);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1061,6 +1066,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Widget _buildErro() {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -1071,26 +1077,31 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: scheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.cloud_off_rounded,
                 size: 36,
-                color: Colors.grey,
+                color: scheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
             Text(
               _erro!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey, fontSize: 15),
+              style: TextStyle(
+                  color: scheme.onSurfaceVariant, fontSize: 15),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _carregar,
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Tentar novamente'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _accentColor,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),

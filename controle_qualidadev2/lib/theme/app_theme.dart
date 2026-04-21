@@ -147,12 +147,12 @@ class AppTheme {
           error: const Color(0xFFF87171),
         ),
         scaffoldBackgroundColor: darkSurface,
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           backgroundColor: darkSurfaceRaised,
           elevation: 0,
           scrolledUnderElevation: 0,
-          iconTheme: IconThemeData(color: Color(0xFFCBD5E1)),
-          titleTextStyle: TextStyle(
+          iconTheme: const IconThemeData(color: Color(0xFFCBD5E1)),
+          titleTextStyle: const TextStyle(
             color: Color(0xFFE2E8F0),
             fontSize: 18,
             fontWeight: FontWeight.w600,

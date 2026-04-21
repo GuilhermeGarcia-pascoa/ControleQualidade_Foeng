@@ -309,15 +309,14 @@ class _NosScreenState extends State<NosScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final canManageProjects =
-        widget.perfil == 'admin' || widget.perfil == 'gestor';
+    final isAdmin = widget.perfil == 'admin';
     final hasActions = campos.isNotEmpty && widget.pai != null;
     final title = widget.pai?.nome ?? widget.projeto.nome;
 
     // Build breadcrumb path
     final breadcrumbItems = <String>[];
-    if (canManageProjects || widget.pai != null) {
-      if (canManageProjects) breadcrumbItems.add(widget.projeto.nome);
+    if (widget.perfil != 'trabalhador' || widget.pai != null) {
+      if (widget.perfil != 'trabalhador') breadcrumbItems.add(widget.projeto.nome);
       breadcrumbItems.addAll(widget.breadcrumb);
       if (widget.pai != null) breadcrumbItems.add(widget.pai!.nome);
     }
@@ -350,9 +349,7 @@ class _NosScreenState extends State<NosScreen> {
                       GestureDetector(
                         onTap: isLast ? null : () {
                           final pops = (breadcrumbItems.length - 1) - e.key;
-                          for (var i = 0; i < pops; i++) {
-                            Navigator.pop(context);
-                          }
+                          for (var i = 0; i < pops; i++) Navigator.pop(context);
                         },
                         child: Text(e.value,
                           style: TextStyle(
@@ -372,7 +369,7 @@ class _NosScreenState extends State<NosScreen> {
           ],
         ),
         actions: [
-          if (canManageProjects && widget.pai == null)
+          if (isAdmin && widget.pai == null)
             IconButton(
               icon: const Icon(Icons.group_outlined, size: 20),
               onPressed: () => Navigator.push(context,
@@ -436,9 +433,9 @@ class _NosScreenState extends State<NosScreen> {
                     ]),
                   ),
                   ...nos.map((no) => _FolderTile(
-                    no: no, isAdmin: canManageProjects, isDark: isDark,
+                    no: no, isAdmin: isAdmin, isDark: isDark,
                     onTap: () {
-                      final newBreadcrumb = !canManageProjects && widget.pai == null
+                      final newBreadcrumb = widget.perfil == 'trabalhador' && widget.pai == null
                           ? <String>[]
                           : [...widget.breadcrumb,
                               if (widget.pai != null) widget.pai!.nome];
@@ -459,10 +456,10 @@ class _NosScreenState extends State<NosScreen> {
 
                 // ─── EMPTY ─────────────────────────────────────────────
                 if (nos.isEmpty && !hasActions)
-                  _EmptyFolderState(isDark: isDark, isAdmin: canManageProjects),
+                  _EmptyFolderState(isDark: isDark, isAdmin: isAdmin),
               ],
             ),
-      floatingActionButton: canManageProjects ? _buildFabs() : null,
+      floatingActionButton: isAdmin ? _buildFabs() : null,
     );
   }
 

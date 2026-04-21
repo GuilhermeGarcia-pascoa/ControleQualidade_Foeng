@@ -36,13 +36,11 @@ class Projeto {
   int? id;
   String nome;
   String descricao;
-  String? donoNome;
 
   Projeto({
     this.id,
     required this.nome,
     required this.descricao,
-    this.donoNome,
   });
 
   factory Projeto.fromMap(Map<String, dynamic> map) {
@@ -50,7 +48,6 @@ class Projeto {
       id: map['id'],
       nome: map['nome'] ?? '',
       descricao: map['descricao'] ?? '',
-      donoNome: map['dono_nome'],
     );
   }
 
@@ -59,7 +56,6 @@ class Projeto {
       if (id != null) 'id': id,
       'nome': nome,
       'descricao': descricao,
-      'dono_nome': donoNome,
     };
   }
 }
@@ -140,7 +136,6 @@ class NoPartilhado {
         id: projetoId,
         nome: projetoNome,
         descricao: '',
-        donoNome: null,
       );
 }
 

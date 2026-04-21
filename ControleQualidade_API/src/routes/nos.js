@@ -5,6 +5,7 @@ const logger = require('../utils/logger');
 const router = express.Router();
 
 // ─── OBTER ANCESTRAIS ─────────────────────────────────────
+// IMPORTANTE: Rotas específicas SEMPRE antes das genéricas (/:projetoId)
 router.get('/:noId/ancestrais', async (req, res) => {
   const { noId } = req.params;
   try {
@@ -68,11 +69,9 @@ router.get('/info/:noId', async (req, res) => {
 });
 
 // ─── PARTILHADOS ──────────────────────────────────────────
-// FIXES aplicados:
-//   1. Removido "AND n.pai_id IS NULL" da query via utilizador_projeto
-//      para que subpastas de projetos partilhados também apareçam.
-//   2. Loop de breadcrumb convertido para Promise.all (paralelo)
-//      com try/catch individual — um erro num nó já não descarta os outros.
+// CRÍTICO: Esta rota DEVE estar antes de /:projetoId
+// Devolve nós partilhados diretamente (via utilizador_no) E
+// nós de projetos onde o utilizador é membro (via utilizador_projeto)
 router.get('/partilhados/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -89,25 +88,24 @@ router.get('/partilhados/:userId', async (req, res) => {
       [userId]
     );
 
-    // 2. Nós de projetos onde o utilizador é membro via utilizador_projeto
-    //    FIX: removido "AND n.pai_id IS NULL" — agora devolve todos os níveis,
-    //    não apenas as pastas raiz.
+    // 2. Nós raiz de projetos onde o utilizador é membro via utilizador_projeto
+    // (caso o admin tenha adicionado via "Gerir Membros" do projeto)
     const [nosViaProjeto] = await pool.execute(
       `SELECT n.id, n.projeto_id, n.pai_id, n.nome, p.nome AS projeto_nome
        FROM utilizador_projeto up
        JOIN projetos p ON p.id = up.projeto_id
-       JOIN nos n ON n.projeto_id = p.id
+       JOIN nos n ON n.projeto_id = p.id AND n.pai_id IS NULL
        WHERE up.utilizador_id = ?
        ORDER BY p.nome ASC, n.nome ASC`,
       [userId]
     );
 
-    // 3. Merge sem duplicados — preferir entradas diretas
+    // 3. Merge sem duplicados (preferir os diretos)
     const idsDiretos = new Set(nosDirectos.map(n => n.id));
     const nosViaProjFiltrados = nosViaProjeto.filter(n => !idsDiretos.has(n.id));
     const todosNos = [...nosDirectos, ...nosViaProjFiltrados];
 
-    // 4. Calcula breadcrumb de forma recursiva
+    // 4. Calcular breadcrumb para cada nó
     async function getBreadcrumb(paiId) {
       const breadcrumb = [];
       let atual = paiId;
@@ -123,32 +121,20 @@ router.get('/partilhados/:userId', async (req, res) => {
       return breadcrumb;
     }
 
-    // FIX: Promise.all para paralelizar + try/catch por nó
-    // Um erro num breadcrumb já não descarta os nós restantes
-    const resultado = await Promise.all(
-      todosNos.map(async (no) => {
-        let breadcrumb = [];
-        try {
-          breadcrumb = await getBreadcrumb(no.pai_id);
-        } catch (err) {
-          logger.warn(`[partilhados] getBreadcrumb falhou para nó ${no.id}: ${err.message}`);
-          // inclui o nó na resposta mesmo sem breadcrumb
-        }
-        return {
-          id: no.id,
-          nome: no.nome,
-          projeto_id: no.projeto_id,
-          projeto_nome: no.projeto_nome,
-          pai_id: no.pai_id,
-          breadcrumb,
-        };
-      })
-    );
+    const resultado = [];
+    for (const no of todosNos) {
+      const breadcrumb = await getBreadcrumb(no.pai_id);
+      resultado.push({
+        id: no.id,
+        nome: no.nome,
+        projeto_id: no.projeto_id,
+        projeto_nome: no.projeto_nome,
+        pai_id: no.pai_id,
+        breadcrumb,
+      });
+    }
 
-    logger.success(
-      `[partilhados] ${resultado.length} pastas para userId=${userId} ` +
-      `(${nosDirectos.length} diretas + ${nosViaProjFiltrados.length} via projeto)`
-    );
+    logger.success(`[partilhados] ${resultado.length} pastas para userId=${userId} (${nosDirectos.length} diretas + ${nosViaProjFiltrados.length} via projeto)`);
     res.json({ success: true, nos: resultado });
   } catch (error) {
     logger.error('Erro em GET /partilhados/:userId', error);
@@ -182,6 +168,7 @@ router.get('/:projetoId/acesso/:userId', async (req, res) => {
     );
     const idsComAcesso = new Set(diretos.map(r => r.id));
 
+    // Incluir também todos os nós do projeto se o utilizador for membro via utilizador_projeto
     const [membroProjeto] = await pool.query(
       'SELECT id FROM utilizador_projeto WHERE utilizador_id = ? AND projeto_id = ?',
       [userId, projetoId]

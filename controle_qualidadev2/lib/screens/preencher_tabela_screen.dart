@@ -94,8 +94,8 @@ class _PreencherTabelaScreenState extends State<PreencherTabelaScreen> {
           Text(widget.no.nome,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2,
               color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900)),
-          const Text('Preenchimento de formulário',
-            style: TextStyle(fontSize: 11, color: AppTheme.neutral400)),
+          Text('Preenchimento de formulário',
+            style: const TextStyle(fontSize: 11, color: AppTheme.neutral400)),
         ]),
         actions: [
           if (!_loading && campos.isNotEmpty)

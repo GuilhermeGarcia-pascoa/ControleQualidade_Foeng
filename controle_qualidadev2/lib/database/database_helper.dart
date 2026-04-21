@@ -1,21 +1,21 @@
 import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../config/app_config.dart';
 import '../models/models.dart';
 import '../utils/session.dart';
+import '../config/app_config.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
 
   DatabaseHelper._init();
 
+  // URL DA API — CONFIGURADA EM lib/config/app_config.dart
   String get _baseUrl => AppConfig.apiBaseUrl;
 
+
+  // ─── LOGIN ───────────────────────────────────────────────
   Future<Utilizador?> login(String email, String password) async {
     try {
       final response = await http.post(
@@ -23,38 +23,31 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          return Utilizador.fromMap(data['user']);
-        }
+        if (data['success'] == true) return Utilizador.fromMap(data['user']);
       }
-
       return null;
     } catch (e) {
-      debugPrint('[ERRO] login: $e');
+      print("❌ ERRO login: $e");
       return null;
     }
   }
 
+  // ─── PESQUISAR UTILIZADORES ───────────────────────────
   Future<List<Map<String, dynamic>>> procurarUtilizadoresPorTexto(
-    String texto,
-  ) async {
+      String texto) async {
     try {
       final encoded = Uri.encodeComponent(texto);
-      final response = await http.get(
-        Uri.parse('$_baseUrl/utilizadores/pesquisar/$encoded'),
-      );
-
+      final response = await http
+          .get(Uri.parse('$_baseUrl/utilizadores/pesquisar/$encoded'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['utilizadores']);
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] procurarUtilizadoresPorTexto: $e');
+      print("❌ ERRO procurarUtilizadoresPorTexto: $e");
       return [];
     }
   }
@@ -62,36 +55,31 @@ class DatabaseHelper {
   Future<Map<String, dynamic>?> procurarUtilizadorPorEmail(String email) async {
     try {
       final encoded = Uri.encodeComponent(email);
-      final response = await http.get(
-        Uri.parse('$_baseUrl/utilizadores/email/$encoded'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/utilizadores/email/$encoded'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['utilizador'];
       }
-
       return null;
     } catch (e) {
-      debugPrint('[ERRO] procurarUtilizadorPorEmail: $e');
+      print("❌ ERRO procurarUtilizadorPorEmail: $e");
       return null;
     }
   }
 
+  // ─── TEMA ─────────────────────────────────────────────
   Future<bool> obterTemaPorUsuario(int userId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/utilizadores/$userId/tema'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/utilizadores/$userId/tema'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['tema_escuro'] ?? false;
       }
-
       return false;
     } catch (e) {
-      debugPrint('[ERRO] obterTemaPorUsuario: $e');
+      print("❌ ERRO obterTemaPorUsuario: $e");
       return false;
     }
   }
@@ -103,28 +91,27 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'tema_escuro': temEscuro}),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] atualizarTemaUsuario: $e');
+      print("❌ ERRO atualizarTemaUsuario: $e");
       return false;
     }
   }
 
+  // ─── PROJETOS ─────────────────────────────────────────────
   Future<List<Projeto>> getProjetos() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/projetos/todos'));
-
+      final userId = await Session.getUserId();
+      final response = await http.get(Uri.parse('$_baseUrl/projetos/$userId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['projetos'] as List)
-            .map((p) => Projeto.fromMap(Map<String, dynamic>.from(p as Map)))
+            .map((p) => Projeto.fromMap(p))
             .toList();
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getProjetos: $e');
+      print("❌ ERRO getProjetos: $e");
       return [];
     }
   }
@@ -132,37 +119,31 @@ class DatabaseHelper {
   Future<List<Projeto>> getProjetosTrabalhador() async {
     try {
       final userId = await Session.getUserId();
-      final response = await http.get(
-        Uri.parse('$_baseUrl/projetos/trabalhador/$userId'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/projetos/trabalhador/$userId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['projetos'] as List)
-            .map((p) => Projeto.fromMap(Map<String, dynamic>.from(p as Map)))
+            .map((p) => Projeto.fromMap(p))
             .toList();
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getProjetosTrabalhador: $e');
+      print("❌ ERRO getProjetosTrabalhador: $e");
       return [];
     }
   }
 
   Future<Map<String, dynamic>> getContagemProjeto(int projetoId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/projetos/$projetoId/contagem'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/projetos/$projetoId/contagem'));
       if (response.statusCode == 200) {
-        return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+        return jsonDecode(response.body);
       }
-
       return {'total_nos': 0, 'total_registos': 0};
     } catch (e) {
-      debugPrint('[ERRO] getContagemProjeto: $e');
+      print("❌ ERRO getContagemProjeto: $e");
       return {'total_nos': 0, 'total_registos': 0};
     }
   }
@@ -179,15 +160,13 @@ class DatabaseHelper {
           'criado_por': userId,
         }),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['id'] ?? 0;
       }
-
       return 0;
     } catch (e) {
-      debugPrint('[ERRO] criarProjeto: $e');
+      print("❌ ERRO criarProjeto: $e");
       return 0;
     }
   }
@@ -199,28 +178,24 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nome': nome, 'descricao': descricao}),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] renomearProjeto: $e');
+      print("❌ ERRO renomearProjeto: $e");
       return false;
     }
   }
 
   Future<bool> apagarProjeto(int projetoId) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$_baseUrl/projetos/$projetoId'),
-      );
-
+      final response =
+          await http.delete(Uri.parse('$_baseUrl/projetos/$projetoId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['success'] == true;
       }
-
       return false;
     } catch (e) {
-      debugPrint('[ERRO] apagarProjeto: $e');
+      print("❌ ERRO apagarProjeto: $e");
       return false;
     }
   }
@@ -233,31 +208,26 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nome': novoNome, 'criado_por': userId}),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] copiarProjeto: $e');
+      print("❌ ERRO copiarProjeto: $e");
       return false;
     }
   }
 
+  // ─── NÓS ──────────────────────────────────────────────────
   Future<List<No>> getNos(int projetoId, {int? paiId}) async {
     try {
       final paiParam = paiId != null ? '?pai_id=$paiId' : '?pai_id=null';
-      final response = await http.get(
-        Uri.parse('$_baseUrl/nos/$projetoId$paiParam'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/nos/$projetoId$paiParam'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return (data['nos'] as List)
-            .map((n) => No.fromMap(Map<String, dynamic>.from(n as Map)))
-            .toList();
+        return (data['nos'] as List).map((n) => No.fromMap(n)).toList();
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getNos: $e');
+      print("❌ ERRO getNos: $e");
       return [];
     }
   }
@@ -265,17 +235,15 @@ class DatabaseHelper {
   Future<No?> obterNoPorId(int noId) async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/nos/info/$noId'));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          return No.fromMap(Map<String, dynamic>.from(data as Map));
+          return No.fromMap(data);
         }
       }
-
       return null;
     } catch (e) {
-      debugPrint('[ERRO] obterNoPorId: $e');
+      print("❌ ERRO obterNoPorId: $e");
       return null;
     }
   }
@@ -291,15 +259,13 @@ class DatabaseHelper {
           'nome': nome,
         }),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['id'] ?? 0;
       }
-
       return 0;
     } catch (e) {
-      debugPrint('[ERRO] criarNo: $e');
+      print("❌ ERRO criarNo: $e");
       return 0;
     }
   }
@@ -311,10 +277,9 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nome': nome}),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] renomearNo: $e');
+      print("❌ ERRO renomearNo: $e");
       return false;
     }
   }
@@ -326,10 +291,9 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'pai_id': novoPaiId}),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] moverNo: $e');
+      print("❌ ERRO moverNo: $e");
       return false;
     }
   }
@@ -338,56 +302,48 @@ class DatabaseHelper {
     try {
       await http.delete(Uri.parse('$_baseUrl/nos/$noId'));
     } catch (e) {
-      debugPrint('[ERRO] apagarNo: $e');
+      print("❌ ERRO apagarNo: $e");
     }
   }
 
   Future<List<No>> getAncestoresNo(int noId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/nos/$noId/ancestrais'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/nos/$noId/ancestrais'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return (data['ancestrais'] as List)
-            .map((n) => No.fromMap(Map<String, dynamic>.from(n as Map)))
-            .toList();
+        final ancestrais =
+            (data['ancestrais'] as List).map((n) => No.fromMap(n)).toList();
+        return ancestrais;
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getAncestoresNo: $e');
+      print("❌ ERRO getAncestoresNo: $e");
       return [];
     }
   }
 
   Future<List<No>> getDescendentesNo(int noId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/nos/$noId/descendentes'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/nos/$noId/descendentes'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['descendentes'] as List)
-            .map((n) => No.fromMap(Map<String, dynamic>.from(n as Map)))
+            .map((n) => No.fromMap(n))
             .toList();
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getDescendentesNo: $e');
+      print("❌ ERRO getDescendentesNo: $e");
       return [];
     }
   }
 
-  Future<bool> copiarNo(
-    int noId, {
-    int? novoPaiId,
-    int? novoProjetoId,
-    required bool incluirRegistos,
-  }) async {
+  Future<bool> copiarNo(int noId,
+      {int? novoPaiId,
+      int? novoProjetoId,
+      required bool incluirRegistos}) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/nos/$noId/copiar'),
@@ -398,10 +354,9 @@ class DatabaseHelper {
           'incluir_registos': incluirRegistos,
         }),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] copiarNo: $e');
+      print("❌ ERRO copiarNo: $e");
       return false;
     }
   }
@@ -409,100 +364,51 @@ class DatabaseHelper {
   Future<List<NoPartilhado>> getNosPartilhados() async {
     try {
       final userId = await Session.getUserId();
-      debugPrint('[getNosPartilhados] userId=$userId - a chamar API');
-
-      final response = await http.get(
-        Uri.parse('$_baseUrl/nos/partilhados/$userId'),
-      );
-
-      debugPrint(
-        '[getNosPartilhados] statusCode=${response.statusCode}',
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/nos/partilhados/$userId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        if (data['success'] != true) {
-          debugPrint(
-            '[getNosPartilhados] success=false: ${data['error'] ?? 'sem mensagem'}',
-          );
-          return [];
-        }
-
-        final rawList = data['nos'];
-        if (rawList == null) {
-          debugPrint('[getNosPartilhados] campo "nos" veio null');
-          return [];
-        }
-
-        if (rawList is! List) {
-          debugPrint(
-            '[getNosPartilhados] campo "nos" invalido: ${rawList.runtimeType}',
-          );
-          return [];
-        }
-
-        final lista = rawList
-            .map(
-              (n) => NoPartilhado.fromMap(
-                Map<String, dynamic>.from(n as Map),
-              ),
-            )
+        return (data['nos'] as List)
+            .map((n) => NoPartilhado.fromMap(n))
             .toList();
-
-        debugPrint(
-          '[getNosPartilhados] ${lista.length} pastas partilhadas carregadas',
-        );
-        return lista;
       }
-
-      debugPrint(
-        '[getNosPartilhados] HTTP ${response.statusCode}: ${response.body}',
-      );
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getNosPartilhados: $e');
-      rethrow;
+      print("❌ ERRO getNosPartilhados: $e");
+      return [];
     }
   }
 
   Future<List<int>> getNosComAcesso(int projetoId) async {
     try {
       final userId = await Session.getUserId();
-      final response = await http.get(
-        Uri.parse('$_baseUrl/nos/$projetoId/acesso/$userId'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/nos/$projetoId/acesso/$userId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<int>.from(data['nos_com_acesso']);
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getNosComAcesso: $e');
+      print("❌ ERRO getNosComAcesso: $e");
       return [];
     }
   }
 
+  // ─── CAMPOS DINÂMICOS ──────────────────────────────────────
   Future<List<CampoDinamico>> getCampos(int noId) async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/campos/$noId'));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return (data['campos'] as List)
-            .map(
-              (c) => CampoDinamico.fromMap(
-                Map<String, dynamic>.from(c as Map),
-              ),
-            )
+        final campos = (data['campos'] as List)
+            .map((c) => CampoDinamico.fromMap(c))
             .toList();
+        return campos;
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getCampos: $e');
+      print("❌ ERRO getCampos: $e");
       return [];
     }
   }
@@ -514,10 +420,9 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(dados),
       );
-
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      debugPrint('[ERRO] criarCampo: $e');
+      print("❌ ERRO criarCampo: $e");
       return false;
     }
   }
@@ -540,10 +445,9 @@ class DatabaseHelper {
           'obrigatorio': obrigatorio,
         }),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] atualizarCampo: $e');
+      print("❌ ERRO atualizarCampo: $e");
       return false;
     }
   }
@@ -555,10 +459,9 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'ordem': novaOrdem}),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] atualizarOrdemCampo: $e');
+      print("❌ ERRO atualizarOrdemCampo: $e");
       return false;
     }
   }
@@ -568,23 +471,23 @@ class DatabaseHelper {
       final response = await http.delete(Uri.parse('$_baseUrl/campos/$id'));
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] apagarCampo: $e');
+      print("❌ ERRO apagarCampo: $e");
       return false;
     }
   }
 
+  // ─── REGISTOS ──────────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getRegistos(int noId) async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/registos/$noId'));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['registos']);
+        final registos = List<Map<String, dynamic>>.from(data['registos']);
+        return registos;
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getRegistos: $e');
+      print("❌ ERRO getRegistos: $e");
       return [];
     }
   }
@@ -595,11 +498,10 @@ class DatabaseHelper {
       final uri = Uri.parse('$_baseUrl/registos');
       final utilizadorId = prefs.getInt('utilizador_id') ?? 1;
       final noId = dados['no_id'];
-      final dadosFormulario =
-          Map<String, dynamic>.from(dados['dados'] ?? const {});
+      final dadosFormulario = Map<String, dynamic>.from(dados['dados']);
 
-      final fotos = <String, String>{};
-      final dadosSemFotos = <String, dynamic>{};
+      final Map<String, String> fotos = {};
+      final Map<String, dynamic> dadosSemFotos = {};
 
       for (final entry in dadosFormulario.entries) {
         final valor = entry.value;
@@ -620,15 +522,12 @@ class DatabaseHelper {
         final base64Str = entry.value.replaceFirst('base64:', '');
         final bytes = base64Decode(base64Str);
 
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            nomeCampo,
-            bytes,
-            filename:
-                '${nomeCampo}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-            contentType: MediaType('image', 'jpeg'),
-          ),
-        );
+        request.files.add(http.MultipartFile.fromBytes(
+          nomeCampo,
+          bytes,
+          filename: '${nomeCampo}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          contentType: MediaType('image', 'jpeg'),
+        ));
       }
 
       final streamedResponse =
@@ -637,25 +536,23 @@ class DatabaseHelper {
       final json = jsonDecode(response.body);
       return json['success'] == true;
     } catch (e) {
-      debugPrint('[ERRO] inserirRegisto: $e');
+      print('❌ Erro inserirRegisto: $e');
       return false;
     }
   }
 
+  // ─── UTILIZADOR - PROJETO ──────────────────────────────────
   Future<List<Map<String, dynamic>>> getMembros(int projetoId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/utilizador_projeto/$projetoId'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/utilizador_projeto/$projetoId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['membros']);
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getMembros: $e');
+      print("❌ ERRO getMembros: $e");
       return [];
     }
   }
@@ -665,15 +562,12 @@ class DatabaseHelper {
       final response = await http.post(
         Uri.parse('$_baseUrl/utilizador_projeto'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'utilizador_id': utilizadorId,
-          'projeto_id': projetoId,
-        }),
+        body: jsonEncode(
+            {'utilizador_id': utilizadorId, 'projeto_id': projetoId}),
       );
-
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      debugPrint('[ERRO] adicionarMembroAoProjeto: $e');
+      print("❌ ERRO adicionarMembroAoProjeto: $e");
       return false;
     }
   }
@@ -683,43 +577,40 @@ class DatabaseHelper {
       final response = await http.delete(
         Uri.parse('$_baseUrl/utilizador_projeto/$projetoId/$utilizadorId'),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] removerMembroDoProjeto: $e');
+      print("❌ ERRO removerMembroDoProjeto: $e");
       return false;
     }
   }
 
+  // ─── UTILIZADOR - NÓ ───────────────────────────────────────
   Future<List<Map<String, dynamic>>> getMembrosNo(int noId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/utilizador_no/$noId'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/utilizador_no/$noId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['membros']);
+        final membros = List<Map<String, dynamic>>.from(data['membros']);
+        return membros;
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getMembrosNo: $e');
+      print("❌ ERRO getMembrosNo: $e");
       return [];
     }
   }
 
   Future<bool> darAcessoNo(int utilizadorId, int noId) async {
     try {
-      final response = await http.post(
+      final responseNo = await http.post(
         Uri.parse('$_baseUrl/utilizador_no'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'utilizador_id': utilizadorId, 'no_id': noId}),
       );
-
-      return response.statusCode == 200;
+      return responseNo.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] darAcessoNo: $e');
+      print("❌ ERRO darAcessoNo: $e");
       return false;
     }
   }
@@ -729,10 +620,9 @@ class DatabaseHelper {
       final response = await http.delete(
         Uri.parse('$_baseUrl/utilizador_no/$noId/$utilizadorId'),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] removerAcessoNo: $e');
+      print("❌ ERRO removerAcessoNo: $e");
       return false;
     }
   }
@@ -742,33 +632,29 @@ class DatabaseHelper {
       final response = await http.get(
         Uri.parse('$_baseUrl/utilizador_no/$noId/acesso/$userId'),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['temAcesso'] ?? false;
       }
-
       return false;
     } catch (e) {
-      debugPrint('[ERRO] verificarAcesoNo: $e');
+      print("❌ ERRO verificarAcesoNo: $e");
       return false;
     }
   }
 
+  // ─── BASE DE DADOS - LIMPEZA ───────────────────────────────
   Future<int> verificarOrfaoscamposDinamicos() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/database/cleanup/orphaned-campos'),
-      );
-
+      final response = await http
+          .get(Uri.parse('$_baseUrl/database/cleanup/orphaned-campos'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['orphanedCount'] as int;
       }
-
       return 0;
     } catch (e) {
-      debugPrint('[ERRO] verificarOrfaoscamposDinamicos: $e');
+      print("❌ ERRO verificarOrfaoscamposDinamicos: $e");
       return 0;
     }
   }
@@ -779,56 +665,48 @@ class DatabaseHelper {
         Uri.parse('$_baseUrl/database/cleanup/orphaned-campos'),
         headers: {'Content-Type': 'application/json'},
       );
-
       if (response.statusCode == 200) {
-        return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+        return jsonDecode(response.body);
       }
-
       return {'success': false, 'error': 'Status code: ${response.statusCode}'};
     } catch (e) {
-      debugPrint('[ERRO] limparCamposDinamicosOrfaos: $e');
+      print("❌ ERRO limparCamposDinamicosOrfaos: $e");
       return {'success': false, 'error': e.toString()};
     }
   }
 
   Future<List<Map<String, dynamic>>> auditoriaCamposPorNo() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/database/audit/campos-por-no'),
-      );
-
+      final response =
+          await http.get(Uri.parse('$_baseUrl/database/audit/campos-por-no'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['auditoria'] ?? []);
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] auditoriaCamposPorNo: $e');
+      print("❌ ERRO auditoriaCamposPorNo: $e");
       return [];
     }
   }
 
+  // ─── MÉTODOS ADICIONAIS ────────────────────────────────────
+  /// Obtém todos os nós de um projeto
   Future<List<No>> getTodosNos(int projetoId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/nos/$projetoId/todos'),
-      );
-
+      final response = await http.get(Uri.parse('$_baseUrl/nos/$projetoId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return (data['nos'] as List)
-            .map((n) => No.fromMap(Map<String, dynamic>.from(n as Map)))
-            .toList();
+        return (data['nos'] as List).map((n) => No.fromMap(n)).toList();
       }
-
       return [];
     } catch (e) {
-      debugPrint('[ERRO] getTodosNos: $e');
+      print("❌ ERRO getTodosNos: $e");
       return [];
     }
   }
 
+  /// Duplica um nó com as suas subpastas e/ou campos
   Future<bool> duplicarNo(
     int noId, {
     int? novoPaiId,
@@ -847,14 +725,14 @@ class DatabaseHelper {
           'incluir_campos': incluirCampos,
         }),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] duplicarNo: $e');
+      print("❌ ERRO duplicarNo: $e");
       return false;
     }
   }
 
+  /// Edita um campo dinâmico
   Future<bool> editarCampo(
     int id, {
     required String nome,
@@ -873,10 +751,9 @@ class DatabaseHelper {
           'obrigatorio': obrigatorio,
         }),
       );
-
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[ERRO] editarCampo: $e');
+      print("❌ ERRO editarCampo: $e");
       return false;
     }
   }
