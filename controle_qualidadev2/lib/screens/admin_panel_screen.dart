@@ -22,7 +22,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   static const _roles = ['admin', 'gestor', 'utilizador'];
 
-  // Cores semânticas: cada role tem bg/fg para light e dark
   ({Color bg, Color fg}) _coresRole(String role) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return switch (role) {
@@ -169,7 +168,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Drag handle
                         Center(
                           child: Container(
                             margin: const EdgeInsets.only(top: 12, bottom: 10),
@@ -181,7 +179,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             ),
                           ),
                         ),
-                        // Header
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 4, 10, 0),
                           child: Row(
@@ -238,7 +235,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        // Dados principais
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Container(
@@ -280,7 +276,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        // Segurança e perfil
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Container(
@@ -412,7 +407,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        // Botões de ação
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                           child: Row(
@@ -530,7 +524,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  /// Campo de texto com suporte a dark mode via scheme do contexto passado
   Widget _campo(
     BuildContext ctx,
     String label,
@@ -560,7 +553,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
             filled: true,
-            // Em dark usa surfaceContainer, em light usa white
             fillColor: scheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
@@ -627,12 +619,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Usa as cores específicas do tema da app
     final containerColor = isDark ? AppTheme.darkSurfaceHigh : AppTheme.neutral100;
     final borderColor = isDark ? AppTheme.darkBorder : AppTheme.neutral200;
 
     return Scaffold(
-      // Usa a cor de fundo do tema em vez de cor hardcoded
       backgroundColor: isDark ? AppTheme.darkSurface : AppTheme.neutral50,
       appBar: AppBar(
         scrolledUnderElevation: 0,
@@ -698,7 +688,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          // Gradiente mantém-se — funciona bem em ambos os temas
           gradient: const LinearGradient(
             colors: [Color(0xFF534AB7), Color(0xFF6C63D9)],
             begin: Alignment.topLeft,
@@ -771,7 +760,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             ),
         ],
         onChanged: (_) => _filtrar(),
-        // Usa as cores específicas do tema da app
         backgroundColor: WidgetStatePropertyAll(containerColor),
         elevation: const WidgetStatePropertyAll(0),
         side: WidgetStatePropertyAll(
@@ -834,20 +822,23 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Widget _buildStats(ColorScheme scheme, Color containerColor, Color borderColor) {
-    final total = _filtrados.length;
-    final admins = _filtrados.where((u) => u.role == 'admin').length;
-    final outros = total - admins;
+    // CORREÇÃO: Usamos _utilizadores (lista global) para os contadores.
+    // Assim, ao filtrar por "gestor", o contador de Admins não desaparece.
+    final numAdmins = _utilizadores.where((u) => u.role == 'admin').length;
+    final numGestores = _utilizadores.where((u) => u.role == 'gestor').length;
+    final numComuns = _utilizadores.where((u) => u.role == 'utilizador').length;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         children: [
-          _statCard('Total', total.toString(), Icons.group_rounded,
+          _statCard('Admins', numAdmins.toString(), Icons.verified_user_rounded,
               scheme.primary, scheme, containerColor, borderColor),
           const SizedBox(width: 10),
-          _statCard('Admins', admins.toString(), Icons.verified_user_rounded,
+          _statCard('Gestores', numGestores.toString(), Icons.work_outline_rounded,
               scheme.secondary, scheme, containerColor, borderColor),
           const SizedBox(width: 10),
-          _statCard('Outros', outros.toString(), Icons.person_outline_rounded,
+          _statCard('Utilizadores', numComuns.toString(), Icons.person_outline_rounded,
               scheme.tertiary, scheme, containerColor, borderColor),
         ],
       ),
@@ -896,7 +887,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
                 color: scheme.onSurfaceVariant,
               ),
             ),
@@ -971,7 +963,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              // Avatar com iniciais
               Container(
                 width: 50,
                 height: 50,
@@ -1108,4 +1099,4 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       ),
     );
   }
-}
+} 
