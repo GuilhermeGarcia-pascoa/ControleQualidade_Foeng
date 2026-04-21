@@ -117,7 +117,10 @@ Future<Map<String, String>> _authHeaders() async {
   Future<List<Projeto>> getProjetos() async {
     try {
       final userId = await Session.getUserId();
-      final response = await http.get(Uri.parse('$_baseUrl/projetos/$userId'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/projetos/$userId'),
+        headers: await _authHeaders(),  // ✅
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['projetos'] as List)
@@ -134,8 +137,10 @@ Future<Map<String, String>> _authHeaders() async {
   Future<List<Projeto>> getProjetosTrabalhador() async {
     try {
       final userId = await Session.getUserId();
-      final response =
-          await http.get(Uri.parse('$_baseUrl/projetos/trabalhador/$userId'));
+      final response = await http.get(
+  Uri.parse('$_baseUrl/projetos/trabalhador/$userId'),
+  headers: await _authHeaders(),  // ✅
+);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['projetos'] as List)
@@ -189,10 +194,10 @@ Future<Map<String, String>> _authHeaders() async {
   Future<bool> renomearProjeto(int id, String nome, String descricao) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/projetos/$id'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'nome': nome, 'descricao': descricao}),
-      );
+  Uri.parse('$_baseUrl/projetos/$id'),
+  headers: await _authHeaders(),  // ✅ (substitui o hardcoded)
+  body: jsonEncode({'nome': nome, 'descricao': descricao}),
+);
       return response.statusCode == 200;
     } catch (e) {
       print("❌ ERRO renomearProjeto: $e");
@@ -202,8 +207,10 @@ Future<Map<String, String>> _authHeaders() async {
 
   Future<bool> apagarProjeto(int projetoId) async {
     try {
-      final response =
-          await http.delete(Uri.parse('$_baseUrl/projetos/$projetoId'));
+      final response = await http.delete(
+  Uri.parse('$_baseUrl/projetos/$projetoId'),
+  headers: await _authHeaders(),  // ✅
+);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['success'] == true;
@@ -219,10 +226,10 @@ Future<Map<String, String>> _authHeaders() async {
     try {
       final userId = await Session.getUserId();
       final response = await http.post(
-        Uri.parse('$_baseUrl/projetos/$projetoId/copiar'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'nome': novoNome, 'criado_por': userId}),
-      );
+  Uri.parse('$_baseUrl/projetos/$projetoId/copiar'),
+  headers: await _authHeaders(),  // ✅
+  body: jsonEncode({'nome': novoNome, 'criado_por': userId}),
+);
       return response.statusCode == 200;
     } catch (e) {
       print("❌ ERRO copiarProjeto: $e");
@@ -379,8 +386,10 @@ Future<Map<String, String>> _authHeaders() async {
   Future<List<NoPartilhado>> getNosPartilhados() async {
     try {
       final userId = await Session.getUserId();
-      final response =
-          await http.get(Uri.parse('$_baseUrl/nos/partilhados/$userId'));
+      final response = await http.get(
+  Uri.parse('$_baseUrl/nos/partilhados/$userId'),
+  headers: await _authHeaders(),  // ✅
+);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['nos'] as List)
@@ -397,8 +406,10 @@ Future<Map<String, String>> _authHeaders() async {
   Future<List<int>> getNosComAcesso(int projetoId) async {
     try {
       final userId = await Session.getUserId();
-      final response =
-          await http.get(Uri.parse('$_baseUrl/nos/$projetoId/acesso/$userId'));
+      final response = await http.get(
+  Uri.parse('$_baseUrl/nos/$projetoId/acesso/$userId'),
+  headers: await _authHeaders(),  // ✅
+);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<int>.from(data['nos_com_acesso']);
