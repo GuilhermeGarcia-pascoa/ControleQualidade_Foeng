@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/admin_service.dart';
+import '../utils/session.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -18,10 +19,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   String? _erro;
   String _filtroRole = '';
 
-  static const _roles = ['admin', 'utilizador'];
+  static const _roles = ['admin', 'gestor', 'utilizador'];
 
   static const _roleColors = {
     'admin': (bg: Color(0xFFEEEDFE), fg: Color(0xFF534AB7)),
+    'gestor': (bg: Color(0xFFE8F6EE), fg: Color(0xFF157347)),
     'utilizador': (bg: Color(0xFFE6F1FB), fg: Color(0xFF185FA5)),
   };
 
@@ -43,6 +45,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       _loading = true;
       _erro = null;
     });
+    final perfil = await Session.getPerfil();
+    if (perfil != 'admin') {
+      if (!mounted) return;
+      setState(() {
+        _erro = 'Acesso restrito a administradores.';
+        _loading = false;
+      });
+      return;
+    }
+
     try {
       final lista = await _service.getUtilizadores();
       if (!mounted) return;
@@ -346,7 +358,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                                                 Icon(
                                                   r == 'admin'
                                                       ? Icons.verified_user_rounded
-                                                      : Icons.person_outline_rounded,
+                                                      : r == 'gestor'
+                                                          ? Icons.work_outline_rounded
+                                                          : Icons.person_outline_rounded,
                                                   size: 18,
                                                   color: ativo
                                                       ? cores.fg

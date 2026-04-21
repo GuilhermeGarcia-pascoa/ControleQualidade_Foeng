@@ -54,21 +54,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadDados() async {
     setState(() => _loading = true);
-    final isAdmin = widget.perfil == 'admin';
-    final projetosData = isAdmin
-        ? await DatabaseHelper.instance.getProjetos()
-        : await DatabaseHelper.instance.getProjetosTrabalhador();
-    final partilhados = !isAdmin
-        ? await DatabaseHelper.instance.getNosPartilhados()
-        : <NoPartilhado>[];
-    if (!mounted) return;
-    setState(() {
-      projetos = projetosData;
-      _projetosFiltrados = List.from(projetosData);
-      _nosPartilhados = partilhados;
-      _nosPartilhadosFiltrados = List.from(partilhados);
-      _loading = false;
-    });
+    final canManageProjects =
+        widget.perfil == 'admin' || widget.perfil == 'gestor';
+    try {
+      final projetosData = canManageProjects
+          ? await DatabaseHelper.instance.getProjetos()
+          : await DatabaseHelper.instance.getProjetosTrabalhador();
+
+      List<NoPartilhado> partilhados = [];
+      if (!canManageProjects) {
+        try {
+          partilhados = await DatabaseHelper.instance.getNosPartilhados();
+        } catch (_) {
+          if (mounted) {
+            Toast.mostrar(
+              context,
+              'Nao foi possivel carregar as pastas partilhadas.',
+              tipo: ToastTipo.aviso,
+            );
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        projetos = projetosData;
+        _projetosFiltrados = List.from(projetosData);
+        _nosPartilhados = partilhados;
+        _nosPartilhadosFiltrados = List.from(partilhados);
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        projetos = [];
+        _projetosFiltrados = [];
+        _nosPartilhados = [];
+        _nosPartilhadosFiltrados = [];
+        _loading = false;
+      });
+      Toast.mostrar(
+        context,
+        'Nao foi possivel carregar o dashboard.',
+        tipo: ToastTipo.erro,
+      );
+    }
   }
 
   void _renomearProjeto(Projeto projeto) {
@@ -315,6 +345,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isAdmin = widget.perfil == 'admin';
+    final canManageProjects = isAdmin || widget.perfil == 'gestor';
     final total = _projetosFiltrados.length + _nosPartilhadosFiltrados.length;
 
     return Scaffold(
@@ -422,7 +453,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Center(
                   child: CircularProgressIndicator(color: AppTheme.accentBlue)),
               )
-            else if (isAdmin) ...[
+            else if (canManageProjects) ...[
               if (_projetosFiltrados.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
@@ -480,9 +511,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ],
-              if (_nosPartilhadosFiltrados.isNotEmpty) ...[
-                SliverToBoxAdapter(child: _SectionHeader(label: 'Partilhado comigo',
-                  count: _nosPartilhadosFiltrados.length)),
+              SliverToBoxAdapter(
+                child: _SectionHeader(
+                  label: 'Partilhado comigo',
+                  count: _nosPartilhadosFiltrados.length,
+                ),
+              ),
+              if (_nosPartilhadosFiltrados.isNotEmpty)
                 SliverPadding(
                   padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
                   sliver: SliverList(
@@ -501,10 +536,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       childCount: _nosPartilhadosFiltrados.length,
                     ),
                   ),
+                )
+              else
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    child: _SharedFoldersEmptyCard(
+                      hasSearch: _searchCtrl.text.isNotEmpty,
+                    ),
+                  ),
                 ),
-              ],
               if (_projetosFiltrados.isEmpty && _nosPartilhadosFiltrados.isEmpty)
-                SliverFillRemaining(
+                const SliverFillRemaining(
                   hasScrollBody: false,
                   child: _EmptyState(
                     icon: Icons.folder_off_outlined,
@@ -516,7 +559,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
-      floatingActionButton: isAdmin
+      floatingActionButton: canManageProjects
           ? FloatingActionButton.extended(
               onPressed: _mostrarDialogCriarProjeto,
               backgroundColor: AppTheme.accentBlue,
@@ -758,6 +801,12 @@ class _ProjectCard extends StatelessWidget {
                     fontWeight: FontWeight.w600, fontSize: 15,
                     color: isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (projeto.donoNome != null && projeto.donoNome!.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text('Dono: ${projeto.donoNome}',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.neutral500),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
                 if (projeto.descricao.isNotEmpty) ...[
                   const SizedBox(height: 3),
                   Text(projeto.descricao,
@@ -855,6 +904,76 @@ class _SharedFolderCard extends StatelessWidget {
             )),
             const Icon(Icons.chevron_right_rounded, color: AppTheme.neutral300),
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _SharedFoldersEmptyCard extends StatelessWidget {
+  final bool hasSearch;
+
+  const _SharedFoldersEmptyCard({required this.hasSearch});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : AppTheme.neutral200,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppTheme.accentTeal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.folder_shared_outlined,
+                color: AppTheme.accentTeal,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasSearch
+                        ? 'Nenhuma pasta encontrada'
+                        : 'Nenhuma pasta partilhada',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color:
+                          isDark ? const Color(0xFFE2E8F0) : AppTheme.neutral900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    hasSearch
+                        ? 'Tente alterar o texto da pesquisa.'
+                        : 'Quando alguem partilhar uma pasta consigo, ela aparece aqui.',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.neutral400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

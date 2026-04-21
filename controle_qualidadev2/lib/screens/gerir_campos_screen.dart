@@ -149,7 +149,7 @@ class _GerirCamposScreenState extends State<GerirCamposScreen> {
                     color: isDark ? AppTheme.darkBorder : AppTheme.neutral200)),
                 child: SwitchListTile(
                   value: obrigatorio,
-                  activeColor: AppTheme.accentBlue,
+                  activeThumbColor: AppTheme.accentBlue,
                   title: const Text('Campo obrigatório',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                   subtitle: const Text('Utilizadores devem preencher este campo',

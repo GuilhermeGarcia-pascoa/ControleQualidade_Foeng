@@ -24,8 +24,10 @@ router.post('/', async (req, res) => {
 router.get('/trabalhador/:userId', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT p.* FROM projetos p
+      `SELECT p.*, dono.nome AS dono_nome
+       FROM projetos p
        INNER JOIN utilizador_projeto up ON p.id = up.projeto_id
+       LEFT JOIN utilizadores dono ON dono.id = p.criado_por
        WHERE up.utilizador_id = ?
        ORDER BY p.criado_em DESC`,
       [req.params.userId]
@@ -55,10 +57,30 @@ router.get('/:id/contagem', async (req, res) => {
 });
 
 // ─── OBTER PROJETOS DE UM UTILIZADOR ───────────────────────
+router.get('/todos', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT p.*, dono.nome AS dono_nome
+       FROM projetos p
+       LEFT JOIN utilizadores dono ON dono.id = p.criado_por
+       ORDER BY p.criado_em DESC`
+    );
+    logger.success(`${rows.length} projetos obtidos para admin`);
+    res.json({ success: true, projetos: rows });
+  } catch (error) {
+    logger.error('Erro em GET /projetos/todos', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/:userId', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT * FROM projetos WHERE criado_por = ? ORDER BY criado_em DESC',
+      `SELECT p.*, dono.nome AS dono_nome
+       FROM projetos p
+       LEFT JOIN utilizadores dono ON dono.id = p.criado_por
+       WHERE p.criado_por = ?
+       ORDER BY p.criado_em DESC`,
       [req.params.userId]
     );
     logger.success(`${rows.length} projetos obtidos para utilizador ${req.params.userId}`);

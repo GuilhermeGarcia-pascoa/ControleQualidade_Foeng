@@ -67,6 +67,95 @@ router.get('/info/:noId', async (req, res) => {
   }
 });
 
+// ─── PARTILHADOS ──────────────────────────────────────────
+// FIXES aplicados:
+//   1. Removido "AND n.pai_id IS NULL" da query via utilizador_projeto
+//      para que subpastas de projetos partilhados também apareçam.
+//   2. Loop de breadcrumb convertido para Promise.all (paralelo)
+//      com try/catch individual — um erro num nó já não descarta os outros.
+router.get('/partilhados/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    logger.info(`[partilhados] Obtendo para userId=${userId}`);
+
+    // 1. Nós partilhados diretamente via utilizador_no
+    const [nosDirectos] = await pool.execute(
+      `SELECT n.id, n.projeto_id, n.pai_id, n.nome, p.nome AS projeto_nome
+       FROM utilizador_no un
+       JOIN nos n ON n.id = un.no_id
+       JOIN projetos p ON p.id = n.projeto_id
+       WHERE un.utilizador_id = ?
+       ORDER BY p.nome ASC, n.nome ASC`,
+      [userId]
+    );
+
+    // 2. Nós de projetos onde o utilizador é membro via utilizador_projeto
+    //    FIX: removido "AND n.pai_id IS NULL" — agora devolve todos os níveis,
+    //    não apenas as pastas raiz.
+    const [nosViaProjeto] = await pool.execute(
+      `SELECT n.id, n.projeto_id, n.pai_id, n.nome, p.nome AS projeto_nome
+       FROM utilizador_projeto up
+       JOIN projetos p ON p.id = up.projeto_id
+       JOIN nos n ON n.projeto_id = p.id
+       WHERE up.utilizador_id = ?
+       ORDER BY p.nome ASC, n.nome ASC`,
+      [userId]
+    );
+
+    // 3. Merge sem duplicados — preferir entradas diretas
+    const idsDiretos = new Set(nosDirectos.map(n => n.id));
+    const nosViaProjFiltrados = nosViaProjeto.filter(n => !idsDiretos.has(n.id));
+    const todosNos = [...nosDirectos, ...nosViaProjFiltrados];
+
+    // 4. Calcula breadcrumb de forma recursiva
+    async function getBreadcrumb(paiId) {
+      const breadcrumb = [];
+      let atual = paiId;
+      while (atual !== null && atual !== undefined) {
+        const [rows] = await pool.execute(
+          'SELECT id, nome, pai_id FROM nos WHERE id = ?',
+          [atual]
+        );
+        if (rows.length === 0) break;
+        breadcrumb.unshift(rows[0].nome);
+        atual = rows[0].pai_id;
+      }
+      return breadcrumb;
+    }
+
+    // FIX: Promise.all para paralelizar + try/catch por nó
+    // Um erro num breadcrumb já não descarta os nós restantes
+    const resultado = await Promise.all(
+      todosNos.map(async (no) => {
+        let breadcrumb = [];
+        try {
+          breadcrumb = await getBreadcrumb(no.pai_id);
+        } catch (err) {
+          logger.warn(`[partilhados] getBreadcrumb falhou para nó ${no.id}: ${err.message}`);
+          // inclui o nó na resposta mesmo sem breadcrumb
+        }
+        return {
+          id: no.id,
+          nome: no.nome,
+          projeto_id: no.projeto_id,
+          projeto_nome: no.projeto_nome,
+          pai_id: no.pai_id,
+          breadcrumb,
+        };
+      })
+    );
+
+    logger.success(
+      `[partilhados] ${resultado.length} pastas para userId=${userId} ` +
+      `(${nosDirectos.length} diretas + ${nosViaProjFiltrados.length} via projeto)`
+    );
+    res.json({ success: true, nos: resultado });
+  } catch (error) {
+    logger.error('Erro em GET /partilhados/:userId', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ─── OBTER TODOS OS NÓS DE UM PROJETO ──────────────────────
 router.get('/:projetoId/todos', async (req, res) => {
   try {
@@ -81,52 +170,52 @@ router.get('/:projetoId/todos', async (req, res) => {
   }
 });
 
-// ─── PARTILHADOS ──────────────────────────────────────────
-router.get('/partilhados/:userId', async (req, res) => {
+// ─── NÓS COM ACESSO ───────────────────────────────────────
+router.get('/:projetoId/acesso/:userId', async (req, res) => {
+  const { projetoId, userId } = req.params;
   try {
-    const { userId } = req.params;
-    logger.info(`[partilhados] Obtendo para userId=${userId}`);
-
-    const [nos] = await pool.execute(
-      `SELECT n.id, n.projeto_id, n.pai_id, n.nome, p.nome AS projeto_nome
-       FROM utilizador_no un
+    const [diretos] = await pool.query(
+      `SELECT n.id FROM utilizador_no un
        JOIN nos n ON n.id = un.no_id
-       JOIN projetos p ON p.id = n.projeto_id
-       WHERE un.utilizador_id = ?
-       ORDER BY p.nome ASC, n.nome ASC`,
-      [userId]
+       WHERE un.utilizador_id = ? AND n.projeto_id = ?`,
+      [userId, projetoId]
     );
+    const idsComAcesso = new Set(diretos.map(r => r.id));
 
-    async function getBreadcrumb(paiId) {
-      const breadcrumb = [];
-      let atual = paiId;
-      while (atual !== null && atual !== undefined) {
-        const [rows] = await pool.execute('SELECT id, nome, pai_id FROM nos WHERE id = ?', [atual]);
-        if (rows.length === 0) break;
-        breadcrumb.unshift(rows[0].nome);
-        atual = rows[0].pai_id;
+    const [membroProjeto] = await pool.query(
+      'SELECT id FROM utilizador_projeto WHERE utilizador_id = ? AND projeto_id = ?',
+      [userId, projetoId]
+    );
+    if (membroProjeto.length > 0) {
+      const [todosNos] = await pool.query(
+        'SELECT id FROM nos WHERE projeto_id = ?',
+        [projetoId]
+      );
+      todosNos.forEach(n => idsComAcesso.add(n.id));
+    }
+
+    async function adicionarDescendentes(paiId) {
+      const [filhos] = await pool.query('SELECT id FROM nos WHERE pai_id = ?', [paiId]);
+      for (const filho of filhos) {
+        idsComAcesso.add(filho.id);
+        await adicionarDescendentes(filho.id);
       }
-      return breadcrumb;
     }
+    for (const { id } of diretos) await adicionarDescendentes(id);
 
-    const resultado = [];
-    for (const no of nos) {
-      const breadcrumb = await getBreadcrumb(no.pai_id);
-      resultado.push({
-        id: no.id,
-        nome: no.nome,
-        projeto_id: no.projeto_id,
-        projeto_nome: no.projeto_nome,
-        pai_id: no.pai_id,
-        breadcrumb,
-      });
+    async function adicionarAncestral(noId) {
+      const [rows] = await pool.query('SELECT id, pai_id FROM nos WHERE id = ?', [noId]);
+      if (rows.length > 0 && rows[0].pai_id !== null) {
+        idsComAcesso.add(rows[0].pai_id);
+        await adicionarAncestral(rows[0].pai_id);
+      }
     }
+    for (const { id } of diretos) await adicionarAncestral(id);
 
-    logger.success(`[partilhados] ${resultado.length} pastas para userId=${userId}`);
-    res.json({ success: true, nos: resultado });
-  } catch (error) {
-    logger.error('Erro em GET /partilhados/:userId', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.json({ success: true, nos_com_acesso: [...idsComAcesso] });
+  } catch (err) {
+    logger.error('Erro em GET /:projetoId/acesso/:userId', err);
+    res.status(500).json({ error: 'Erro interno ao obter acessos.' });
   }
 });
 
@@ -190,12 +279,12 @@ router.post('/:id/copiar', async (req, res) => {
   try {
     const [nos] = await pool.execute('SELECT projeto_id FROM nos WHERE id = ?', [req.params.id]);
     if (nos.length === 0) return res.status(404).json({ success: false, error: 'Nó não encontrado' });
-    
+
     const projetoId = novo_projeto_id || nos[0].projeto_id;
     const copiarSubpastas = incluir_subpastas !== false;
     const copiarCampos = incluir_campos !== false;
     const copiarRegistos = incluir_registos === true;
-    
+
     await copiarNoRecursivo(pool, req.params.id, novo_pai_id || null, projetoId, copiarRegistos, copiarSubpastas, copiarCampos, true);
     logger.success(`Nó ${req.params.id} copiado`);
     res.json({ success: true });
@@ -205,44 +294,7 @@ router.post('/:id/copiar', async (req, res) => {
   }
 });
 
-// ─── NÓS COM ACESSO ───────────────────────────────────────
-router.get('/:projetoId/acesso/:userId', async (req, res) => {
-  const { projetoId, userId } = req.params;
-  try {
-    const [diretos] = await pool.query(
-      `SELECT n.id FROM utilizador_no un
-       JOIN nos n ON n.id = un.no_id
-       WHERE un.utilizador_id = ? AND n.projeto_id = ?`,
-      [userId, projetoId]
-    );
-    const idsComAcesso = new Set(diretos.map(r => r.id));
-
-    async function adicionarDescendentes(paiId) {
-      const [filhos] = await pool.query('SELECT id FROM nos WHERE pai_id = ?', [paiId]);
-      for (const filho of filhos) {
-        idsComAcesso.add(filho.id);
-        await adicionarDescendentes(filho.id);
-      }
-    }
-    for (const { id } of diretos) await adicionarDescendentes(id);
-
-    async function adicionarAncestral(noId) {
-      const [rows] = await pool.query('SELECT id, pai_id FROM nos WHERE id = ?', [noId]);
-      if (rows.length > 0 && rows[0].pai_id !== null) {
-        idsComAcesso.add(rows[0].pai_id);
-        await adicionarAncestral(rows[0].pai_id);
-      }
-    }
-    for (const { id } of diretos) await adicionarAncestral(id);
-
-    res.json({ success: true, nos_com_acesso: [...idsComAcesso] });
-  } catch (err) {
-    logger.error('Erro em GET /:projetoId/acesso/:userId', err);
-    res.status(500).json({ error: 'Erro interno ao obter acessos.' });
-  }
-});
-
-// ─── NÓS POR PROJETO (genérica) ────────────────────────────
+// ─── NÓS POR PROJETO (genérica) — DEVE SER A ÚLTIMA ────────
 router.get('/:projetoId', async (req, res) => {
   const { projetoId } = req.params;
   const { pai_id } = req.query;

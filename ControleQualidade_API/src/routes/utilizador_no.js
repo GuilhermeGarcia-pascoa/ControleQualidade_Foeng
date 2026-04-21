@@ -4,16 +4,41 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
-// ─── DAR ACESSO A NÓ ───────────────────────────────────────
 router.post('/', async (req, res) => {
   const { utilizador_id, no_id } = req.body;
-  logger.info(`Dando acesso a nó ${no_id} para utilizador ${utilizador_id}`);
+  logger.info(`Dando acesso a no ${no_id} para utilizador ${utilizador_id}`);
+
   try {
+    const [utilizadores] = await pool.execute(
+      'SELECT perfil FROM utilizadores WHERE id = ?',
+      [utilizador_id]
+    );
+
+    if (utilizadores.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, error: 'Utilizador nao encontrado.' });
+    }
+
+    if (
+      utilizadores[0].perfil === 'admin' ||
+      utilizadores[0].perfil === 'gestor'
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'Administradores e gestores ja tem acesso a todos os projetos e pastas.',
+      });
+    }
+
     await pool.execute(
       'INSERT IGNORE INTO utilizador_no (utilizador_id, no_id) VALUES (?, ?)',
       [utilizador_id, no_id]
     );
-    logger.success(`Acesso ao nó ${no_id} concedido ao utilizador ${utilizador_id}`);
+
+    logger.success(
+      `Acesso ao no ${no_id} concedido ao utilizador ${utilizador_id}`
+    );
     res.json({ success: true });
   } catch (error) {
     logger.error('Erro em POST /utilizador_no', error);
@@ -21,11 +46,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ─── OBTER MEMBROS DO NÓ ───────────────────────────────────
 router.get('/:noId', async (req, res) => {
   try {
     const { noId } = req.params;
-    logger.info(`Obtendo membros do nó ${noId}`);
+    logger.info(`Obtendo membros do no ${noId}`);
     const [rows] = await pool.execute(
       `SELECT u.id, u.nome, u.email, u.perfil
        FROM utilizadores u
@@ -33,7 +57,7 @@ router.get('/:noId', async (req, res) => {
        WHERE un.no_id = ?`,
       [noId]
     );
-    logger.success(`${rows.length} membros obtidos para nó ${noId}`);
+    logger.success(`${rows.length} membros obtidos para no ${noId}`);
     res.json({ success: true, membros: rows });
   } catch (error) {
     logger.error('Erro em GET /utilizador_no/:noId', error);
@@ -41,13 +65,12 @@ router.get('/:noId', async (req, res) => {
   }
 });
 
-// ─── VERIFICAR ACESSO A NÓ ─────────────────────────────────
 router.get('/:noId/acesso/:userId', async (req, res) => {
   try {
     const { noId, userId } = req.params;
     let noAtual = parseInt(noId);
     let temAcesso = false;
-    
+
     while (noAtual !== null) {
       const [acesso] = await pool.execute(
         'SELECT id FROM utilizador_no WHERE no_id = ? AND utilizador_id = ?',
@@ -57,11 +80,14 @@ router.get('/:noId/acesso/:userId', async (req, res) => {
         temAcesso = true;
         break;
       }
-      const [pai] = await pool.execute('SELECT pai_id FROM nos WHERE id = ?', [noAtual]);
+      const [pai] = await pool.execute(
+        'SELECT pai_id FROM nos WHERE id = ?',
+        [noAtual]
+      );
       if (pai.length === 0 || pai[0].pai_id === null) break;
       noAtual = pai[0].pai_id;
     }
-    
+
     res.json({ success: true, temAcesso });
   } catch (error) {
     logger.error('Erro em GET /utilizador_no/:noId/acesso/:userId', error);
@@ -69,14 +95,15 @@ router.get('/:noId/acesso/:userId', async (req, res) => {
   }
 });
 
-// ─── REMOVER ACESSO A NÓ ───────────────────────────────────
 router.delete('/:noId/:utilizadorId', async (req, res) => {
   try {
     await pool.execute(
       'DELETE FROM utilizador_no WHERE no_id = ? AND utilizador_id = ?',
       [req.params.noId, req.params.utilizadorId]
     );
-    logger.success(`Acesso ao nó ${req.params.noId} removido do utilizador ${req.params.utilizadorId}`);
+    logger.success(
+      `Acesso ao no ${req.params.noId} removido do utilizador ${req.params.utilizadorId}`
+    );
     res.json({ success: true });
   } catch (error) {
     logger.error('Erro em DELETE /utilizador_no/:noId/:utilizadorId', error);

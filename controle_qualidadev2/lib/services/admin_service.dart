@@ -23,7 +23,7 @@ class UtilizadorAdmin {
     final id = idValue is int
         ? idValue
         : int.tryParse(idValue?.toString() ?? '') ??
-            (throw FormatException('ID inválido no utilizador'));
+            (throw const FormatException('ID inválido no utilizador'));
 
     final perfil = json['role'] ?? json['perfil'];
     return UtilizadorAdmin(

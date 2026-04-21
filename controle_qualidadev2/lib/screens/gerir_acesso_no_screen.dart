@@ -129,8 +129,10 @@ class _GerirAcessoNoScreenState extends State<GerirAcessoNoScreen> {
     // Filtrar quem já tem acesso direto
     final idsDiretos =
         _acessosDiretos.map((e) => e.utilizador['id']).toSet();
-    final filtrados =
-        resultados.where((u) => !idsDiretos.contains(u['id'])).toList();
+    final filtrados = resultados
+        .where((u) => u['perfil'] != 'admin' && u['perfil'] != 'gestor')
+        .where((u) => !idsDiretos.contains(u['id']))
+        .toList();
 
     if (!mounted) return;
     setState(() {
@@ -162,6 +164,12 @@ class _GerirAcessoNoScreenState extends State<GerirAcessoNoScreen> {
       if (utilizador == null) {
         _showSnackBar('Utilizador não encontrado.',
             Colors.red, Icons.error_outline_rounded);
+        return;
+      }
+
+      if (utilizador['perfil'] == 'admin' || utilizador['perfil'] == 'gestor') {
+        _showSnackBar('Administradores jÃ¡ tÃªm acesso total aos projetos e pastas.',
+            Colors.orange, Icons.info_outline_rounded);
         return;
       }
 
