@@ -1,13 +1,102 @@
 const express = require('express');
+const { body, param } = require('express-validator');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const validate = require('../middleware/validate');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Validações para parâmetros de ID
+const validarNoId = [
+  param('noId').isInt({ min: 1 }).withMessage('ID do nó inválido'),
+  validate
+];
+
+const validarProjetoIdNos = [
+  param('projetoId').isInt({ min: 1 }).withMessage('ID do projeto inválido'),
+  validate
+];
+
+const validarNoIdPath = [
+  param('id').isInt({ min: 1 }).withMessage('ID do nó inválido'),
+  validate
+];
+
+const validarUserIdNos = [
+  param('userId').isInt({ min: 1 }).withMessage('ID do utilizador inválido'),
+  validate
+];
+
+// Validações para criar nó
+const validarCriarNo = [
+  body('projeto_id')
+    .isInt({ min: 1 })
+    .withMessage('projeto_id deve ser um inteiro positivo'),
+  body('nome')
+    .trim()
+    .notEmpty()
+    .withMessage('nome é obrigatório')
+    .isLength({ max: 255 })
+    .withMessage('nome demasiado longo (máx. 255 caracteres)'),
+  body('pai_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('pai_id inválido'),
+  validate
+];
+
+// Validações para atualizar nó
+const validarAtualizarNo = [
+  param('id').isInt({ min: 1 }).withMessage('ID do nó inválido'),
+  body('nome')
+    .trim()
+    .notEmpty()
+    .withMessage('nome é obrigatório')
+    .isLength({ max: 255 })
+    .withMessage('nome demasiado longo (máx. 255 caracteres)'),
+  validate
+];
+
+// Validações para mover nó
+const validarMoverNo = [
+  param('id').isInt({ min: 1 }).withMessage('ID do nó inválido'),
+  body('pai_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('pai_id inválido'),
+  validate
+];
+
+// Validações para copiar nó
+const validarCopiarNo = [
+  param('id').isInt({ min: 1 }).withMessage('ID do nó inválido'),
+  body('novo_projeto_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('novo_projeto_id inválido'),
+  body('novo_pai_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('novo_pai_id inválido'),
+  body('incluir_registos')
+    .optional()
+    .isBoolean()
+    .withMessage('incluir_registos deve ser um booleano'),
+  body('incluir_subpastas')
+    .optional()
+    .isBoolean()
+    .withMessage('incluir_subpastas deve ser um booleano'),
+  body('incluir_campos')
+    .optional()
+    .isBoolean()
+    .withMessage('incluir_campos deve ser um booleano'),
+  validate
+];
+
 // ─── OBTER ANCESTRAIS ─────────────────────────────────────
 // IMPORTANTE: Rotas específicas SEMPRE antes das genéricas (/:projetoId)
-router.get('/:noId/ancestrais', requireAuth, async (req, res) => {
+router.get('/:noId/ancestrais', requireAuth, validarNoId, async (req, res) => {
   const { noId } = req.params;
   try {
     logger.info(`[ancestrais] Obtendo para noId=${noId}`);
@@ -32,7 +121,7 @@ router.get('/:noId/ancestrais', requireAuth, async (req, res) => {
 });
 
 // ─── OBTER DESCENDENTES ───────────────────────────────────
-router.get('/:noId/descendentes', requireAuth, async (req, res) => {
+router.get('/:noId/descendentes', requireAuth, validarNoId, async (req, res) => {
   const { noId } = req.params;
   try {
     const descendentes = [];
@@ -52,7 +141,7 @@ router.get('/:noId/descendentes', requireAuth, async (req, res) => {
 });
 
 // ─── OBTER INFORMAÇÃO DO NÓ ───────────────────────────────
-router.get('/info/:noId', requireAuth, async (req, res) => {
+router.get('/info/:noId', requireAuth, validarNoId, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT id, projeto_id, pai_id, nome FROM nos WHERE id = ?',
@@ -73,7 +162,7 @@ router.get('/info/:noId', requireAuth, async (req, res) => {
 // CRÍTICO: Esta rota DEVE estar antes de /:projetoId
 // Devolve nós partilhados diretamente (via utilizador_no) E
 // nós de projetos onde o utilizador é membro (via utilizador_projeto)
-router.get('/partilhados/:userId', requireAuth, async (req, res) => {
+router.get('/partilhados/:userId', requireAuth, validarUserIdNos, async (req, res) => {
   try {
     const { userId } = req.params;
     logger.info(`[partilhados] Obtendo para userId=${userId}`);
@@ -144,7 +233,7 @@ router.get('/partilhados/:userId', requireAuth, async (req, res) => {
 });
 
 // ─── OBTER TODOS OS NÓS DE UM PROJETO ──────────────────────
-router.get('/:projetoId/todos', requireAuth, async (req, res) => {
+router.get('/:projetoId/todos', requireAuth, validarProjetoIdNos, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT * FROM nos WHERE projeto_id = ? ORDER BY nome ASC',
@@ -160,6 +249,17 @@ router.get('/:projetoId/todos', requireAuth, async (req, res) => {
 // ─── NÓS COM ACESSO ───────────────────────────────────────
 router.get('/:projetoId/acesso/:userId', requireAuth, async (req, res) => {
   const { projetoId, userId } = req.params;
+  // Validação manual para esta rota que tem múltiplos parâmetros
+  if (!Number.isInteger(parseInt(projetoId)) || parseInt(projetoId) < 1 ||
+      !Number.isInteger(parseInt(userId)) || parseInt(userId) < 1) {
+    return res.status(400).json({
+      success: false,
+      errors: [
+        { campo: 'projetoId', mensagem: 'ID do projeto inválido' },
+        { campo: 'userId', mensagem: 'ID do utilizador inválido' }
+      ]
+    });
+  }
   try {
     const [diretos] = await pool.query(
       `SELECT n.id FROM utilizador_no un
@@ -208,7 +308,7 @@ router.get('/:projetoId/acesso/:userId', requireAuth, async (req, res) => {
 });
 
 // ─── CRIAR NÓ ──────────────────────────────────────────────
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validarCriarNo, async (req, res) => {
   const { projeto_id, pai_id, nome } = req.body;
   try {
     const [result] = await pool.execute(
@@ -224,7 +324,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // ─── ATUALIZAR NÓ ─────────────────────────────────────────
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, validarAtualizarNo, async (req, res) => {
   const { nome } = req.body;
   try {
     await pool.execute('UPDATE nos SET nome = ? WHERE id = ?', [nome, req.params.id]);
@@ -237,7 +337,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 });
 
 // ─── MOVER NÓ ─────────────────────────────────────────────
-router.put('/:id/mover', requireAuth, async (req, res) => {
+router.put('/:id/mover', requireAuth, validarMoverNo, async (req, res) => {
   const { pai_id } = req.body;
   try {
     await pool.execute('UPDATE nos SET pai_id = ? WHERE id = ?', [pai_id || null, req.params.id]);
@@ -250,7 +350,7 @@ router.put('/:id/mover', requireAuth, async (req, res) => {
 });
 
 // ─── DELETAR NÓ ───────────────────────────────────────────
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', requireAuth, validarNoIdPath, async (req, res) => {
   try {
     await pool.execute('DELETE FROM nos WHERE id = ?', [req.params.id]);
     logger.success(`Nó ${req.params.id} eliminado`);
@@ -262,7 +362,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
 });
 
 // ─── COPIAR NÓ ─────────────────────────────────────────────
-router.post('/:id/copiar', requireAuth, async (req, res) => {
+router.post('/:id/copiar', requireAuth, validarCopiarNo, async (req, res) => {
   const { novo_pai_id, novo_projeto_id, incluir_registos, incluir_subpastas, incluir_campos } = req.body;
   try {
     const [nos] = await pool.execute('SELECT projeto_id FROM nos WHERE id = ?', [req.params.id]);
@@ -283,7 +383,7 @@ router.post('/:id/copiar', requireAuth, async (req, res) => {
 });
 
 // ─── NÓS POR PROJETO (genérica) — DEVE SER A ÚLTIMA ────────
-router.get('/:projetoId', requireAuth, async (req, res) => {
+router.get('/:projetoId', requireAuth, validarProjetoIdNos, async (req, res) => {
   const { projetoId } = req.params;
   const { pai_id } = req.query;
   try {

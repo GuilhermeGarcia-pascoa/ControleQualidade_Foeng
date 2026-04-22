@@ -1,12 +1,59 @@
 const express = require('express');
+const { body, param } = require('express-validator');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const validate = require('../middleware/validate');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Validações para criar projeto
+const validarCriarProjeto = [
+  body('nome')
+    .trim()
+    .notEmpty()
+    .withMessage('nome é obrigatório')
+    .isLength({ max: 255 })
+    .withMessage('nome demasiado longo (máx. 255 caracteres)'),
+  body('descricao')
+    .optional()
+    .isString()
+    .isLength({ max: 1000 })
+    .withMessage('descrição demasiado longa (máx. 1000 caracteres)'),
+  validate
+];
+
+// Validações para atualizar projeto
+const validarAtualizarProjeto = [
+  param('id').isInt({ min: 1 }).withMessage('ID do projeto inválido'),
+  body('nome')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('nome não pode estar vazio')
+    .isLength({ max: 255 })
+    .withMessage('nome demasiado longo (máx. 255 caracteres)'),
+  body('descricao')
+    .optional()
+    .isString()
+    .isLength({ max: 1000 })
+    .withMessage('descrição demasiado longa (máx. 1000 caracteres)'),
+  validate
+];
+
+// Validações para parâmetros de ID
+const validarIdProjeto = [
+  param('id').isInt({ min: 1 }).withMessage('ID do projeto inválido'),
+  validate
+];
+
+const validarUserIdProjeto = [
+  param('userId').isInt({ min: 1 }).withMessage('ID do utilizador inválido'),
+  validate
+];
+
 // ─── CRIAR PROJETO ─────────────────────────────────────────
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validarCriarProjeto, async (req, res) => {
   const { nome, descricao, criado_por } = req.body;
   try {
     const [result] = await pool.execute(
@@ -22,7 +69,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // ─── OBTER PROJETOS DO TRABALHADOR ─────────────────────────
-router.get('/trabalhador/:userId', requireAuth, async (req, res) => {
+router.get('/trabalhador/:userId', requireAuth, validarUserIdProjeto, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       `SELECT p.* FROM projetos p
@@ -40,7 +87,7 @@ router.get('/trabalhador/:userId', requireAuth, async (req, res) => {
 });
 
 // ─── CONTAGEM DE NÓS E REGISTOS ────────────────────────────
-router.get('/:id/contagem', requireAuth, async (req, res) => {
+router.get('/:id/contagem', requireAuth, validarIdProjeto, async (req, res) => {
   try {
     const [nos] = await pool.execute('SELECT COUNT(*) as total_nos FROM nos WHERE projeto_id = ?', [req.params.id]);
     const [registos] = await pool.execute(
@@ -56,7 +103,7 @@ router.get('/:id/contagem', requireAuth, async (req, res) => {
 });
 
 // ─── OBTER PROJETOS DE UM UTILIZADOR ───────────────────────
-router.get('/:userId', requireAuth, async (req, res) => {
+router.get('/:userId', requireAuth, validarUserIdProjeto, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT * FROM projetos WHERE criado_por = ? ORDER BY criado_em DESC',
@@ -71,7 +118,7 @@ router.get('/:userId', requireAuth, async (req, res) => {
 });
 
 // ─── ATUALIZAR PROJETO ─────────────────────────────────────
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, validarAtualizarProjeto, async (req, res) => {
   const { nome, descricao } = req.body;
   try {
     await pool.execute('UPDATE projetos SET nome = ?, descricao = ? WHERE id = ?', [nome, descricao, req.params.id]);
@@ -84,7 +131,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 });
 
 // ─── DELETAR PROJETO ───────────────────────────────────────
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', requireAuth, validarIdProjeto, async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const projetoId = req.params.id;
@@ -120,7 +167,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
 });
 
 // ─── COPIAR PROJETO ───────────────────────────────────────
-router.post('/:id/copiar', requireAuth, async (req, res) => {
+router.post('/:id/copiar', requireAuth, validarIdProjeto, async (req, res) => {
   const { nome, criado_por } = req.body;
   try {
     logger.info(`Copiando projeto ${req.params.id} → "${nome}"`);

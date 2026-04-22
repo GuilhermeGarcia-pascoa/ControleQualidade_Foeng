@@ -1,13 +1,59 @@
 const express = require('express');
+const { body, param, query } = require('express-validator');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const validate = require('../middleware/validate');
 const { requireAuth } = require('../middleware/auth');
 const { upload, handleUploadError } = require('../config/upload');
 
 const router = express.Router();
 
+// Validações para GET registos
+const validarObterRegistos = [
+  param('noId').isInt({ min: 1 }).withMessage('ID do nó inválido'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('limit deve ser entre 1 e 100'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('page deve ser um inteiro positivo'),
+  query('search')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('search demasiado longo'),
+  query('filtroColuna')
+    .optional()
+    .isString()
+    .isLength({ max: 100 })
+    .withMessage('filtroColuna demasiado longo'),
+  validate
+];
+
+// Validações para POST registo
+const validarCriarRegisto = [
+  body('no_id')
+    .isInt({ min: 1 })
+    .withMessage('no_id deve ser um inteiro positivo'),
+  body('dados_json')
+    .notEmpty()
+    .withMessage('dados_json é obrigatório')
+    .custom(value => {
+      try {
+        JSON.parse(value);
+        return true;
+      } catch (e) {
+        throw new Error('JSON inválido em dados_json');
+      }
+    }),
+  validate
+];
+
 // ─── OBTER REGISTOS ───────────────────────────────────────
-router.get('/:noId', requireAuth, async (req, res) => {
+router.get('/:noId', requireAuth, validarObterRegistos, async (req, res) => {
   try {
     const { noId } = req.params;
     const limit = Math.min(parseInt(req.query.limit) || 30, 100); // Máximo 100
@@ -77,7 +123,7 @@ router.get('/:noId', requireAuth, async (req, res) => {
 });
 
 // ─── CRIAR REGISTO (com upload de ficheiros) ───────────────
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAuth, validarCriarRegisto, (req, res) => {
   // Usar upload.array() com limite de 5 ficheiros
   upload.array('files', 5)(req, res, async function (err) {
     // Tratar erros de upload
@@ -93,14 +139,6 @@ router.post('/', requireAuth, (req, res) => {
     try {
       const { no_id, utilizador_id, dados_json } = req.body;
       
-      // Validar campos obrigatórios
-      if (!no_id || !dados_json) {
-        return res.status(400).json({
-          success: false,
-          error: 'Campos obrigatórios: no_id, dados_json'
-        });
-      }
-
       let dados;
       try {
         dados = JSON.parse(dados_json);

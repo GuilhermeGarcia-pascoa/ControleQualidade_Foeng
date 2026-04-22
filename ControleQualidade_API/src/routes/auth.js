@@ -1,6 +1,8 @@
 const express = require('express');
+const { body } = require('express-validator');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const validate = require('../middleware/validate');
 const {
   hashPassword,
   isLegacyMd5Hash,
@@ -10,15 +12,22 @@ const { generateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
-  const { email, password } = req.body;
+// Validações para login
+const validarLogin = [
+  body('email')
+    .isEmail()
+    .withMessage('email inválido')
+    .normalizeEmail(),
+  body('password')
+    .notEmpty()
+    .withMessage('password é obrigatória')
+    .isLength({ min: 4 })
+    .withMessage('password demasiado curta'),
+  validate
+];
 
-  if (!email || !password) {
-    return res.status(400).json({
-      success: false,
-      message: 'Email e password sao obrigatorios',
-    });
-  }
+router.post('/', validarLogin, async (req, res) => {
+  const { email, password } = req.body;
 
   try {
     const [rows] = await pool.execute(

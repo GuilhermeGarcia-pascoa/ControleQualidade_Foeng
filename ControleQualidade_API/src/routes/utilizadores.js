@@ -1,10 +1,114 @@
 const express = require('express');
+const { body, param, query } = require('express-validator');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const validate = require('../middleware/validate');
 const { hashPassword } = require('../utils/hash');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Validações para criar utilizador
+const validarCriarUtilizador = [
+  body('nome')
+    .trim()
+    .notEmpty()
+    .withMessage('nome é obrigatório')
+    .isLength({ max: 255 })
+    .withMessage('nome demasiado longo (máx. 255 caracteres)'),
+  body('email')
+    .isEmail()
+    .withMessage('email inválido')
+    .normalizeEmail(),
+  body('password')
+    .notEmpty()
+    .withMessage('password é obrigatória')
+    .isLength({ min: 4 })
+    .withMessage('password demasiado curta (mín. 4 caracteres)'),
+  body('perfil')
+    .optional()
+    .isIn(['admin', 'trabalhador', 'utilizador'])
+    .withMessage('perfil inválido'),
+  validate
+];
+
+// Validações para registar utilizador
+const validarRegistarUtilizador = [
+  body('nome')
+    .trim()
+    .notEmpty()
+    .withMessage('nome é obrigatório')
+    .isLength({ max: 255 })
+    .withMessage('nome demasiado longo'),
+  body('email')
+    .isEmail()
+    .withMessage('email inválido')
+    .normalizeEmail(),
+  body('password')
+    .notEmpty()
+    .withMessage('password é obrigatória')
+    .isLength({ min: 4 })
+    .withMessage('password demasiado curta (mín. 4 caracteres)'),
+  body('perfil')
+    .optional()
+    .isIn(['admin', 'trabalhador', 'utilizador'])
+    .withMessage('perfil inválido'),
+  validate
+];
+
+// Validações para alterar senha
+const validarAlterarSenha = [
+  param('id').isInt({ min: 1 }).withMessage('ID do utilizador inválido'),
+  body('password')
+    .notEmpty()
+    .withMessage('password é obrigatória')
+    .isLength({ min: 4 })
+    .withMessage('password demasiado curta (mín. 4 caracteres)'),
+  validate
+];
+
+// Validações para editar utilizador
+const validarEditarUtilizador = [
+  param('id').isInt({ min: 1 }).withMessage('ID do utilizador inválido'),
+  body('nome')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('nome não pode estar vazio')
+    .isLength({ max: 255 })
+    .withMessage('nome demasiado longo (máx. 255 caracteres)'),
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('email inválido')
+    .normalizeEmail(),
+  body('perfil')
+    .optional()
+    .isIn(['admin', 'trabalhador', 'utilizador'])
+    .withMessage('perfil inválido'),
+  validate
+];
+
+// Validações para parâmetros
+const validarIdUtilizador = [
+  param('id').isInt({ min: 1 }).withMessage('ID do utilizador inválido'),
+  validate
+];
+
+const validarEmailParam = [
+  param('email').isEmail().withMessage('email inválido').normalizeEmail(),
+  validate
+];
+
+const validarTextoSearch = [
+  param('texto')
+    .trim()
+    .notEmpty()
+    .withMessage('texto de busca é obrigatório')
+    .isLength({ max: 100 })
+    .withMessage('texto demasiado longo'),
+  validate
+];
 
 // ─── LISTAR TODOS ───────────────────────────────────────────────────
 router.get('/', requireAuth, requireAdmin, async (req, res) => {
@@ -21,12 +125,8 @@ router.get('/', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ─── CRIAR UTILIZADOR ─────────────────────────────────────────────
-router.post('/', requireAuth, requireAdmin, async (req, res) => {
+router.post('/', requireAuth, requireAdmin, validarCriarUtilizador, async (req, res) => {
   const { nome, email, password, perfil } = req.body;
-
-  if (!nome || !email || !password) {
-    return res.status(400).json({ success: false, message: 'Nome, email e password são obrigatórios' });
-  }
 
   try {
     const [existe] = await pool.execute(
@@ -57,12 +157,8 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ─── REGISTO ──────────────────────────────────────────────────────
-router.post('/registar', async (req, res) => {
+router.post('/registar', validarRegistarUtilizador, async (req, res) => {
   const { nome, email, password, perfil } = req.body;
-
-  if (!nome || !email || !password) {
-    return res.status(400).json({ success: false, message: 'Nome, email e password são obrigatórios' });
-  }
 
   try {
     const [existe] = await pool.execute(
@@ -93,7 +189,7 @@ router.post('/registar', async (req, res) => {
 });
 
 // ─── BUSCAR POR EMAIL ─────────────────────────────────────
-router.get('/email/:email', async (req, res) => {
+router.get('/email/:email', validarEmailParam, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT id, nome, email, perfil FROM utilizadores WHERE email = ?',
@@ -111,11 +207,8 @@ router.get('/email/:email', async (req, res) => {
 });
 
 // ─── ALTERAR SENHA ────────────────────────────────────────────────────
-router.put('/:id/senha', requireAuth, async (req, res) => {
+router.put('/:id/senha', requireAuth, validarAlterarSenha, async (req, res) => {
   const { password } = req.body;
-  if (!password) {
-    return res.status(400).json({ success: false, message: 'Password obrigatória' });
-  }
 
   try {
     const hashedPassword = await hashPassword(password);
@@ -132,7 +225,7 @@ router.put('/:id/senha', requireAuth, async (req, res) => {
 });
 
 // ─── TEMA ─────────────────────────────────────────────────
-router.get('/:id/tema', requireAuth, async (req, res) => {
+router.get('/:id/tema', requireAuth, validarIdUtilizador, async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT tema_escuro FROM utilizadores WHERE id = ?', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ success: false });
@@ -143,7 +236,7 @@ router.get('/:id/tema', requireAuth, async (req, res) => {
   }
 });
 
-router.put('/:id/tema', requireAuth, async (req, res) => {
+router.put('/:id/tema', requireAuth, validarIdUtilizador, async (req, res) => {
   try {
     const { tema_escuro } = req.body;
     await pool.execute('UPDATE utilizadores SET tema_escuro = ? WHERE id = ?', [tema_escuro ? 1 : 0, req.params.id]);
@@ -156,12 +249,8 @@ router.put('/:id/tema', requireAuth, async (req, res) => {
 });
 
 // ─── EDITAR UTILIZADOR ────────────────────────────────────────────────
-router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
+router.put('/:id', requireAuth, requireAdmin, validarEditarUtilizador, async (req, res) => {
   const { nome, email, perfil } = req.body;
-
-  if (!nome || !email) {
-    return res.status(400).json({ success: false, message: 'Nome e email são obrigatórios' });
-  }
 
   try {
     // Verificar se o email já existe (excepto para o utilizador atual)
@@ -188,7 +277,7 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ─── APAGAR UTILIZADOR ───────────────────────────────────────────────
-router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, validarIdUtilizador, async (req, res) => {
   try {
     await pool.execute('DELETE FROM utilizadores WHERE id = ?', [req.params.id]);
     logger.success(`Utilizador eliminado: ${req.params.id}`);
@@ -200,7 +289,7 @@ router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ─── PESQUISAR POR TEXTO (nome ou email) ───────────────────────────────────
-router.get('/pesquisar/:texto', async (req, res) => {
+router.get('/pesquisar/:texto', validarTextoSearch, async (req, res) => {
   try {
     const texto = `%${req.params.texto}%`;
     const [rows] = await pool.execute(

@@ -1,11 +1,95 @@
 const express = require('express');
+const { body, param } = require('express-validator');
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const validate = require('../middleware/validate');
 
 const router = express.Router();
 
+// Validações para parâmetros
+const validarNoId = [
+  param('noId').isInt({ min: 1 }).withMessage('ID do nó inválido'),
+  validate
+];
+
+const validarIdCampo = [
+  param('id').isInt({ min: 1 }).withMessage('ID do campo inválido'),
+  validate
+];
+
+// Validações para criar campo
+const validarCriarCampo = [
+  body('no_id')
+    .isInt({ min: 1 })
+    .withMessage('no_id deve ser um inteiro positivo'),
+  body('nome_campo')
+    .trim()
+    .notEmpty()
+    .withMessage('nome_campo é obrigatório')
+    .isLength({ max: 255 })
+    .withMessage('nome_campo demasiado longo (máx. 255 caracteres)'),
+  body('tipo_campo')
+    .trim()
+    .notEmpty()
+    .withMessage('tipo_campo é obrigatório')
+    .isIn(['text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file'])
+    .withMessage('tipo_campo inválido'),
+  body('opcoes')
+    .optional()
+    .isString()
+    .isLength({ max: 1000 })
+    .withMessage('opcoes demasiado longo'),
+  body('obrigatorio')
+    .optional()
+    .isBoolean()
+    .withMessage('obrigatorio deve ser um booleano'),
+  body('ordem')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('ordem deve ser um inteiro não-negativo'),
+  validate
+];
+
+// Validações para atualizar campo
+const validarAtualizarCampo = [
+  param('id').isInt({ min: 1 }).withMessage('ID do campo inválido'),
+  body('nome_campo')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('nome_campo não pode estar vazio')
+    .isLength({ max: 255 })
+    .withMessage('nome_campo demasiado longo (máx. 255 caracteres)'),
+  body('tipo_campo')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('tipo_campo não pode estar vazio')
+    .isIn(['text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file'])
+    .withMessage('tipo_campo inválido'),
+  body('opcoes')
+    .optional()
+    .isString()
+    .isLength({ max: 1000 })
+    .withMessage('opcoes demasiado longo'),
+  body('obrigatorio')
+    .optional()
+    .isBoolean()
+    .withMessage('obrigatorio deve ser um booleano'),
+  validate
+];
+
+// Validações para atualizar ordem
+const validarAtualizarOrdem = [
+  param('id').isInt({ min: 1 }).withMessage('ID do campo inválido'),
+  body('ordem')
+    .isInt({ min: 0 })
+    .withMessage('ordem deve ser um inteiro não-negativo'),
+  validate
+];
+
 // ─── OBTER CAMPOS ─────────────────────────────────────────
-router.get('/:noId', async (req, res) => {
+router.get('/:noId', validarNoId, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT * FROM campos_dinamicos WHERE no_id = ? ORDER BY ordem ASC',
@@ -20,7 +104,7 @@ router.get('/:noId', async (req, res) => {
 });
 
 // ─── CRIAR CAMPO ───────────────────────────────────────────
-router.post('/', async (req, res) => {
+router.post('/', validarCriarCampo, async (req, res) => {
   const { no_id, nome_campo, tipo_campo, opcoes, obrigatorio, ordem } = req.body;
   try {
     const [result] = await pool.execute(
@@ -36,7 +120,7 @@ router.post('/', async (req, res) => {
 });
 
 // ─── ATUALIZAR CAMPO ───────────────────────────────────────
-router.put('/:id', async (req, res) => {
+router.put('/:id', validarAtualizarCampo, async (req, res) => {
   const { id } = req.params;
   const { nome_campo, tipo_campo, opcoes, obrigatorio } = req.body;
   try {
@@ -53,7 +137,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ─── ATUALIZAR ORDEM DO CAMPO ──────────────────────────────
-router.put('/:id/ordem', async (req, res) => {
+router.put('/:id/ordem', validarAtualizarOrdem, async (req, res) => {
   const { id } = req.params;
   const { ordem } = req.body;
   try {
@@ -67,7 +151,7 @@ router.put('/:id/ordem', async (req, res) => {
 });
 
 // ─── DELETAR CAMPO ─────────────────────────────────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', validarIdCampo, async (req, res) => {
   const { id } = req.params;
   try {
     const [result] = await pool.execute('DELETE FROM campos_dinamicos WHERE id = ?', [id]);
