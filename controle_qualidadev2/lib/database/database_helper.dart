@@ -542,7 +542,7 @@ class DatabaseHelper {
   // ─── REGISTOS ──────────────────────────────────────────────
   Future<Map<String, dynamic>> getRegistos(int noId, {
     int page = 1,
-    int limit = 50,
+    int limit = 30,
     String? search,
     String? filtroColuna,
   }) async {

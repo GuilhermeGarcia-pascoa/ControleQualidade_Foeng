@@ -29,7 +29,7 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
   // Paginação
   int _currentPage = 1;
   int _totalPages = 1;
-  final int _limit = 50;
+  final int _limit = 30;
   int _total = 0;
 
   String _filtroBusca = '';
@@ -129,13 +129,6 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
   void _nextPage() {
     if (_currentPage < _totalPages) {
       setState(() => _currentPage++);
-      _carregar();
-    }
-  }
-
-  void _goToPage(int page) {
-    if (page >= 1 && page <= _totalPages && page != _currentPage) {
-      setState(() => _currentPage = page);
       _carregar();
     }
   }

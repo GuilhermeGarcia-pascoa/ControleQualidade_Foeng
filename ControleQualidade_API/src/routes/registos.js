@@ -10,7 +10,7 @@ const router = express.Router();
 router.get('/:noId', requireAuth, async (req, res) => {
   try {
     const { noId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Máximo 100
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100); // Máximo 100
     const page = parseInt(req.query.page) || 1;
     const offset = (page - 1) * limit;
     const search = req.query.search ? req.query.search.trim() : '';
