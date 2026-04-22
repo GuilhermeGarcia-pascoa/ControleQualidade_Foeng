@@ -59,7 +59,7 @@ const validarAtualizarNo = [
 const validarMoverNo = [
   param('id').isInt({ min: 1 }).withMessage('ID do nó inválido'),
   body('pai_id')
-    .optional()
+    .optional({ nullable: true })  // ← adicionar nullable: true
     .isInt({ min: 1 })
     .withMessage('pai_id inválido'),
   validate
@@ -358,8 +358,8 @@ router.delete('/:id', requireAuth, validarNoIdPath, async (req, res) => {
   }
 });
 
-// ─── COPIAR NÓ ─────────────────────────────────────────────
-router.post('/:id/copiar', requireAuth, validarCopiarNo, async (req, res) => {
+// ─── DUPLICAR  NÓ ─────────────────────────────────────────────
+router.post('/:id/duplicar', requireAuth, validarCopiarNo, async (req, res) => {
   const { novo_pai_id, novo_projeto_id, incluir_registos, incluir_subpastas, incluir_campos } = req.body;
   try {
     const [nos] = await pool.execute('SELECT projeto_id FROM nos WHERE id = ?', [req.params.id]);
