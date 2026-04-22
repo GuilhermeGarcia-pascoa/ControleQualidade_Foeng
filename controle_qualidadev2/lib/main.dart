@@ -5,31 +5,36 @@ import 'utils/session.dart';
 import 'theme/app_theme.dart';
 import 'config/app_config.dart';
 
+// ✅ CHAVE GLOBAL — usada pelo DatabaseHelper para redirecionar ao login quando token expira
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   AppConfig.printConfig();
+  await AppTheme.loadTheme();
   final user = await Session.getUser();
-  if (user != null) {
-    await AppTheme.loadTheme();
-  }
   runApp(MyApp(initialUser: user));
 }
 
 class MyApp extends StatelessWidget {
   final Map<String, dynamic>? initialUser;
-  const MyApp({Key? key, this.initialUser}) : super(key: key);
+  const MyApp({super.key, this.initialUser});
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: AppTheme.themeMode,
-      builder: (context, mode, _) {
+      builder: (_, mode, __) {
         return MaterialApp(
           title: 'FOENG · Controlo de Qualidade',
+          navigatorKey: navigatorKey, // ✅ OBRIGATÓRIO — liga ao DatabaseHelper
           debugShowCheckedModeBanner: false,
-          themeMode: mode,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
+          themeMode: mode,
+          routes: {
+            '/': (_) => const LoginScreen(),
+          },
           home: initialUser == null
               ? const LoginScreen()
               : DashboardScreen(perfil: initialUser!['perfil']),

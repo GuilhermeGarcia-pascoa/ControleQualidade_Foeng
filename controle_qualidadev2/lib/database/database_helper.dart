@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../utils/session.dart';
 import '../config/app_config.dart';
+import '../main.dart'; // para aceder ao navigatorKey
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -14,53 +15,72 @@ class DatabaseHelper {
   // URL DA API — CONFIGURADA EM lib/config/app_config.dart
   String get _baseUrl => AppConfig.apiBaseUrl;
 
+  // ─── HEADERS COM AUTH ─────────────────────────────────────────
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await Session.getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty)
+        'Authorization': 'Bearer $token',
+    };
+  }
+
+  // ─── TRATAR RESPOSTA (inclui redirect 401) ───────────────────
+  Future<T?> _handleResponse<T>(
+    http.Response response,
+    T? Function(Map<String, dynamic>) onSuccess,
+  ) async {
+    if (response.statusCode == 401) {
+      await Session.logout();
+      navigatorKey.currentState
+          ?.pushNamedAndRemoveUntil('/', (route) => false);
+      return null;
+    }
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return onSuccess(data);
+    }
+    return null;
+  }
 
   // ─── LOGIN ───────────────────────────────────────────────
   Future<Utilizador?> login(String email, String password) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/login'),
-      headers: await _authHeaders(),
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['success'] == true) {
-        // ✅ ADICIONAR ESTA LINHA:
-        if (data['token'] != null) {
-          await Session.saveToken(data['token'] as String);
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          if (data['token'] != null) {
+            await Session.saveToken(data['token'] as String);
+          }
+          return Utilizador.fromMap(data['user']);
         }
-        return Utilizador.fromMap(data['user']);
       }
+      return null;
+    } catch (e) {
+      print("❌ ERRO login: $e");
+      return null;
     }
-    return null;
-  } catch (e) {
-    print("❌ ERRO login: $e");
-    return null;
   }
-}
-
-Future<Map<String, String>> _authHeaders() async {
-  final token = await Session.getToken();
-  return {
-    'Content-Type': 'application/json',
-    if (token != null && token.isNotEmpty)
-      'Authorization': 'Bearer $token',
-  };
-}
 
   // ─── PESQUISAR UTILIZADORES ───────────────────────────
   Future<List<Map<String, dynamic>>> procurarUtilizadoresPorTexto(
       String texto) async {
     try {
       final encoded = Uri.encodeComponent(texto);
-      final response = await http
-          .get(Uri.parse('$_baseUrl/utilizadores/pesquisar/$encoded'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['utilizadores']);
-      }
-      return [];
+      final response = await http.get(
+        Uri.parse('$_baseUrl/utilizadores/pesquisar/$encoded'),
+        headers: await _authHeaders(),
+      );
+      return await _handleResponse(
+            response,
+            (data) => List<Map<String, dynamic>>.from(data['utilizadores']),
+          ) ??
+          [];
     } catch (e) {
       print("❌ ERRO procurarUtilizadoresPorTexto: $e");
       return [];
@@ -70,13 +90,11 @@ Future<Map<String, String>> _authHeaders() async {
   Future<Map<String, dynamic>?> procurarUtilizadorPorEmail(String email) async {
     try {
       final encoded = Uri.encodeComponent(email);
-      final response =
-          await http.get(Uri.parse('$_baseUrl/utilizadores/email/$encoded'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['utilizador'];
-      }
-      return null;
+      final response = await http.get(
+        Uri.parse('$_baseUrl/utilizadores/email/$encoded'),
+        headers: await _authHeaders(),
+      );
+      return await _handleResponse(response, (data) => data['utilizador']);
     } catch (e) {
       print("❌ ERRO procurarUtilizadorPorEmail: $e");
       return null;
@@ -86,13 +104,15 @@ Future<Map<String, String>> _authHeaders() async {
   // ─── TEMA ─────────────────────────────────────────────
   Future<bool> obterTemaPorUsuario(int userId) async {
     try {
-      final response =
-          await http.get(Uri.parse('$_baseUrl/utilizadores/$userId/tema'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['tema_escuro'] ?? false;
-      }
-      return false;
+      final response = await http.get(
+        Uri.parse('$_baseUrl/utilizadores/$userId/tema'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO — antes não tinha token
+      );
+      return await _handleResponse(
+            response,
+            (data) => data['tema_escuro'] as bool? ?? false,
+          ) ??
+          false;
     } catch (e) {
       print("❌ ERRO obterTemaPorUsuario: $e");
       return false;
@@ -106,6 +126,12 @@ Future<Map<String, String>> _authHeaders() async {
         headers: await _authHeaders(),
         body: jsonEncode({'tema_escuro': temEscuro}),
       );
+      if (response.statusCode == 401) {
+        await Session.logout();
+        navigatorKey.currentState
+            ?.pushNamedAndRemoveUntil('/', (route) => false);
+        return false;
+      }
       return response.statusCode == 200;
     } catch (e) {
       print("❌ ERRO atualizarTemaUsuario: $e");
@@ -119,15 +145,15 @@ Future<Map<String, String>> _authHeaders() async {
       final userId = await Session.getUserId();
       final response = await http.get(
         Uri.parse('$_baseUrl/projetos/$userId'),
-        headers: await _authHeaders(),  // ✅
+        headers: await _authHeaders(),
       );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return (data['projetos'] as List)
-            .map((p) => Projeto.fromMap(p))
-            .toList();
-      }
-      return [];
+      return await _handleResponse(
+            response,
+            (data) => (data['projetos'] as List)
+                .map((p) => Projeto.fromMap(p))
+                .toList(),
+          ) ??
+          [];
     } catch (e) {
       print("❌ ERRO getProjetos: $e");
       return [];
@@ -138,16 +164,16 @@ Future<Map<String, String>> _authHeaders() async {
     try {
       final userId = await Session.getUserId();
       final response = await http.get(
-  Uri.parse('$_baseUrl/projetos/trabalhador/$userId'),
-  headers: await _authHeaders(),  // ✅
-);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return (data['projetos'] as List)
-            .map((p) => Projeto.fromMap(p))
-            .toList();
-      }
-      return [];
+        Uri.parse('$_baseUrl/projetos/trabalhador/$userId'),
+        headers: await _authHeaders(),
+      );
+      return await _handleResponse(
+            response,
+            (data) => (data['projetos'] as List)
+                .map((p) => Projeto.fromMap(p))
+                .toList(),
+          ) ??
+          [];
     } catch (e) {
       print("❌ ERRO getProjetosTrabalhador: $e");
       return [];
@@ -156,12 +182,12 @@ Future<Map<String, String>> _authHeaders() async {
 
   Future<Map<String, dynamic>> getContagemProjeto(int projetoId) async {
     try {
-      final response =
-          await http.get(Uri.parse('$_baseUrl/projetos/$projetoId/contagem'));
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
-      return {'total_nos': 0, 'total_registos': 0};
+      final response = await http.get(
+        Uri.parse('$_baseUrl/projetos/$projetoId/contagem'),
+        headers: await _authHeaders(),
+      );
+      return await _handleResponse(response, (data) => data) ??
+          {'total_nos': 0, 'total_registos': 0};
     } catch (e) {
       print("❌ ERRO getContagemProjeto: $e");
       return {'total_nos': 0, 'total_registos': 0};
@@ -180,11 +206,7 @@ Future<Map<String, String>> _authHeaders() async {
           'criado_por': userId,
         }),
       );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['id'] ?? 0;
-      }
-      return 0;
+      return await _handleResponse(response, (data) => data['id'] as int? ?? 0) ?? 0;
     } catch (e) {
       print("❌ ERRO criarProjeto: $e");
       return 0;
@@ -194,10 +216,16 @@ Future<Map<String, String>> _authHeaders() async {
   Future<bool> renomearProjeto(int id, String nome, String descricao) async {
     try {
       final response = await http.put(
-  Uri.parse('$_baseUrl/projetos/$id'),
-  headers: await _authHeaders(),  // ✅ (substitui o hardcoded)
-  body: jsonEncode({'nome': nome, 'descricao': descricao}),
-);
+        Uri.parse('$_baseUrl/projetos/$id'),
+        headers: await _authHeaders(),
+        body: jsonEncode({'nome': nome, 'descricao': descricao}),
+      );
+      if (response.statusCode == 401) {
+        await Session.logout();
+        navigatorKey.currentState
+            ?.pushNamedAndRemoveUntil('/', (route) => false);
+        return false;
+      }
       return response.statusCode == 200;
     } catch (e) {
       print("❌ ERRO renomearProjeto: $e");
@@ -208,9 +236,15 @@ Future<Map<String, String>> _authHeaders() async {
   Future<bool> apagarProjeto(int projetoId) async {
     try {
       final response = await http.delete(
-  Uri.parse('$_baseUrl/projetos/$projetoId'),
-  headers: await _authHeaders(),  // ✅
-);
+        Uri.parse('$_baseUrl/projetos/$projetoId'),
+        headers: await _authHeaders(),
+      );
+      if (response.statusCode == 401) {
+        await Session.logout();
+        navigatorKey.currentState
+            ?.pushNamedAndRemoveUntil('/', (route) => false);
+        return false;
+      }
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['success'] == true;
@@ -226,10 +260,16 @@ Future<Map<String, String>> _authHeaders() async {
     try {
       final userId = await Session.getUserId();
       final response = await http.post(
-  Uri.parse('$_baseUrl/projetos/$projetoId/copiar'),
-  headers: await _authHeaders(),  // ✅
-  body: jsonEncode({'nome': novoNome, 'criado_por': userId}),
-);
+        Uri.parse('$_baseUrl/projetos/$projetoId/copiar'),
+        headers: await _authHeaders(),
+        body: jsonEncode({'nome': novoNome, 'criado_por': userId}),
+      );
+      if (response.statusCode == 401) {
+        await Session.logout();
+        navigatorKey.currentState
+            ?.pushNamedAndRemoveUntil('/', (route) => false);
+        return false;
+      }
       return response.statusCode == 200;
     } catch (e) {
       print("❌ ERRO copiarProjeto: $e");
@@ -334,9 +374,7 @@ Future<Map<String, String>> _authHeaders() async {
           await http.get(Uri.parse('$_baseUrl/nos/$noId/ancestrais'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final ancestrais =
-            (data['ancestrais'] as List).map((n) => No.fromMap(n)).toList();
-        return ancestrais;
+        return (data['ancestrais'] as List).map((n) => No.fromMap(n)).toList();
       }
       return [];
     } catch (e) {
@@ -387,16 +425,16 @@ Future<Map<String, String>> _authHeaders() async {
     try {
       final userId = await Session.getUserId();
       final response = await http.get(
-  Uri.parse('$_baseUrl/nos/partilhados/$userId'),
-  headers: await _authHeaders(),  // ✅
-);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return (data['nos'] as List)
-            .map((n) => NoPartilhado.fromMap(n))
-            .toList();
-      }
-      return [];
+        Uri.parse('$_baseUrl/nos/partilhados/$userId'),
+        headers: await _authHeaders(),
+      );
+      return await _handleResponse(
+            response,
+            (data) => (data['nos'] as List)
+                .map((n) => NoPartilhado.fromMap(n))
+                .toList(),
+          ) ??
+          [];
     } catch (e) {
       print("❌ ERRO getNosPartilhados: $e");
       return [];
@@ -407,14 +445,14 @@ Future<Map<String, String>> _authHeaders() async {
     try {
       final userId = await Session.getUserId();
       final response = await http.get(
-  Uri.parse('$_baseUrl/nos/$projetoId/acesso/$userId'),
-  headers: await _authHeaders(),  // ✅
-);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<int>.from(data['nos_com_acesso']);
-      }
-      return [];
+        Uri.parse('$_baseUrl/nos/$projetoId/acesso/$userId'),
+        headers: await _authHeaders(),
+      );
+      return await _handleResponse(
+            response,
+            (data) => List<int>.from(data['nos_com_acesso']),
+          ) ??
+          [];
     } catch (e) {
       print("❌ ERRO getNosComAcesso: $e");
       return [];
@@ -427,10 +465,9 @@ Future<Map<String, String>> _authHeaders() async {
       final response = await http.get(Uri.parse('$_baseUrl/campos/$noId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final campos = (data['campos'] as List)
+        return (data['campos'] as List)
             .map((c) => CampoDinamico.fromMap(c))
             .toList();
-        return campos;
       }
       return [];
     } catch (e) {
@@ -508,8 +545,7 @@ Future<Map<String, String>> _authHeaders() async {
       final response = await http.get(Uri.parse('$_baseUrl/registos/$noId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final registos = List<Map<String, dynamic>>.from(data['registos']);
-        return registos;
+        return List<Map<String, dynamic>>.from(data['registos']);
       }
       return [];
     } catch (e) {
@@ -617,8 +653,7 @@ Future<Map<String, String>> _authHeaders() async {
           await http.get(Uri.parse('$_baseUrl/utilizador_no/$noId'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final membros = List<Map<String, dynamic>>.from(data['membros']);
-        return membros;
+        return List<Map<String, dynamic>>.from(data['membros']);
       }
       return [];
     } catch (e) {
@@ -629,12 +664,12 @@ Future<Map<String, String>> _authHeaders() async {
 
   Future<bool> darAcessoNo(int utilizadorId, int noId) async {
     try {
-      final responseNo = await http.post(
+      final response = await http.post(
         Uri.parse('$_baseUrl/utilizador_no'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'utilizador_id': utilizadorId, 'no_id': noId}),
       );
-      return responseNo.statusCode == 200;
+      return response.statusCode == 200;
     } catch (e) {
       print("❌ ERRO darAcessoNo: $e");
       return false;
@@ -717,7 +752,6 @@ Future<Map<String, String>> _authHeaders() async {
   }
 
   // ─── MÉTODOS ADICIONAIS ────────────────────────────────────
-  /// Obtém todos os nós de um projeto
   Future<List<No>> getTodosNos(int projetoId) async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/nos/$projetoId'));
@@ -732,7 +766,6 @@ Future<Map<String, String>> _authHeaders() async {
     }
   }
 
-  /// Duplica um nó com as suas subpastas e/ou campos
   Future<bool> duplicarNo(
     int noId, {
     int? novoPaiId,
@@ -758,7 +791,6 @@ Future<Map<String, String>> _authHeaders() async {
     }
   }
 
-  /// Edita um campo dinâmico
   Future<bool> editarCampo(
     int id, {
     required String nome,
