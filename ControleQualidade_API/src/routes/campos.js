@@ -29,15 +29,16 @@ const validarCriarCampo = [
     .isLength({ max: 255 })
     .withMessage('nome_campo demasiado longo (máx. 255 caracteres)'),
   body('tipo_campo')
-    .trim()
-    .notEmpty()
-    .withMessage('tipo_campo é obrigatório')
-    .isIn(['text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file'])
-    .withMessage('tipo_campo inválido'),
-  body('opcoes')
-    .optional()
-    .isString()
-    .isLength({ max: 1000 })
+  .trim()
+  .notEmpty()
+  .withMessage('tipo_campo é obrigatório')
+  .isIn(['text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file', 'texto', 'numero', 'data', 'selecao', 'imagem'])
+  .withMessage('tipo_campo inválido'),
+body('opcoes')
+  .optional({ nullable: true }) 
+  .isString()
+  .isLength({ max: 1000 })
+  .withMessage('opcoes demasiado longo'),
     .withMessage('opcoes demasiado longo'),
   body('obrigatorio')
     .optional()
