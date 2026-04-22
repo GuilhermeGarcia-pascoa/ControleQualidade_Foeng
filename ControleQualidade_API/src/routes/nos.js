@@ -39,10 +39,7 @@ const validarCriarNo = [
     .withMessage('nome é obrigatório')
     .isLength({ max: 255 })
     .withMessage('nome demasiado longo (máx. 255 caracteres)'),
-  body('pai_id')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('pai_id inválido'),
+  body('pai_id').optional({ nullable: true }).isInt({ min: 1 }).withMessage('pai_id inválido'),
   validate
 ];
 
