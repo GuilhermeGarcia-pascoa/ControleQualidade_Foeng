@@ -54,11 +54,11 @@ class BaseRepository {
   /**
    * Conta registos com filtros
    */
-  async count(table, whereClause = '', params = []) {
-    const sql = `SELECT COUNT(*) as total FROM ${table}${whereClause ? ` WHERE ${whereClause}` : ''}`;
-    const result = await this.queryOne(sql, params);
-    return result?.total || 0;
-  }
+ async count(table, whereClause = '', params = []) {
+  const sql = `SELECT COUNT(*) as total FROM ${table}${whereClause ? ` WHERE ${whereClause}` : ''}`;
+  const result = await this.queryOne(sql, params);
+  return Number(result?.total || 0); // ← Number() converte BigInt para inteiro normal
+}
 
   /**
    * Retorna resposta com paginação

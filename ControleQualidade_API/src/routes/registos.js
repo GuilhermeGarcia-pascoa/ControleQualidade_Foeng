@@ -39,19 +39,12 @@ const validarObterRegistos = [
 // Validações para POST registo
 const validarCriarRegisto = [
   body('no_id')
-    .isInt({ min: 1 })
-    .withMessage('no_id deve ser um inteiro positivo'),
+    .notEmpty().withMessage('no_id é obrigatório')
+    .customSanitizer(value => parseInt(value))  // ← converte string "5" para inteiro
+    .isInt({ min: 1 }).withMessage('no_id deve ser um inteiro positivo'),
   body('dados_json')
-    .notEmpty()
-    .withMessage('dados_json é obrigatório')
-    .custom(value => {
-      try {
-        JSON.parse(value);
-        return true;
-      } catch (e) {
-        throw new Error('JSON inválido em dados_json');
-      }
-    }),
+    .notEmpty().withMessage('dados_json é obrigatório'),
+    // ← removido o JSON.parse, já vem como string do multipart
   validate
 ];
 

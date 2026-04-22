@@ -65,10 +65,10 @@ const validarAtualizarCampo = [
     .trim()
     .notEmpty()
     .withMessage('tipo_campo não pode estar vazio')
-    .isIn(['text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file'])
+    .isIn(['text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file', 'texto', 'numero', 'data', 'selecao', 'imagem'])
     .withMessage('tipo_campo inválido'),
   body('opcoes')
-    .optional()
+    .optional({ nullable: true })  // ← corrigido
     .isString()
     .isLength({ max: 1000 })
     .withMessage('opcoes demasiado longo'),
