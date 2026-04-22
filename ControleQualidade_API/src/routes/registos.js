@@ -40,11 +40,10 @@ const validarObterRegistos = [
 const validarCriarRegisto = [
   body('no_id')
     .notEmpty().withMessage('no_id é obrigatório')
-    .customSanitizer(value => parseInt(value))  // ← converte string "5" para inteiro
+    .customSanitizer(value => parseInt(value))
     .isInt({ min: 1 }).withMessage('no_id deve ser um inteiro positivo'),
   body('dados_json')
     .notEmpty().withMessage('dados_json é obrigatório'),
-    // ← removido o JSON.parse, já vem como string do multipart
   validate
 ];
 
@@ -64,30 +63,28 @@ router.get('/:noId', requireAuth, validarObterRegistos, asyncHandler(async (req,
 }));
 
 // ─── CRIAR REGISTO (com upload de ficheiros) ───────────────
-router.post('/', requireAuth, validarCriarRegisto, (req, res) => {
-  // Usar upload.array() com limite de 5 ficheiros
-  upload.array('files', 5)(req, res, asyncHandler(async (err) => {
-    // Tratar erros de upload
+router.post('/', requireAuth, (req, res, next) => {
+  upload.array('files', 5)(req, res, (err) => {
     if (err) {
-      logger.warn(`Erro no upload: ${err.message}`);
       return res.status(400).json({
         success: false,
         error: err.message,
         code: err.code || 'UPLOAD_ERROR'
       });
     }
+    next();
+  });
+}, validarCriarRegisto, asyncHandler(async (req, res) => {
+  const { no_id, utilizador_id, dados_json } = req.body;
 
-    const { no_id, utilizador_id, dados_json } = req.body;
+  const result = await registosService.createRegisto(
+    no_id,
+    utilizador_id,
+    dados_json,
+    req.files || []
+  );
 
-    const result = await registosService.createRegisto(
-      no_id,
-      utilizador_id,
-      dados_json,
-      req.files || []
-    );
-
-    res.json(result);
-  }));
-});
+  res.json(result);
+}));
 
 module.exports = router;

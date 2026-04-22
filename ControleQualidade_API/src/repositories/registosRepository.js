@@ -9,55 +9,52 @@ class RegistosRepository extends BaseRepository {
   /**
    * Obter registos de um nó com filtros e paginação
    */
-  async getByNoId(noId, limit, page, search = '', filtroColuna = null) {
-    const offset = (page - 1) * limit;
-    
-    let whereClause = 'r.no_id = ?';
-    let countWhereClause = 'no_id = ?';
-    let params = [noId];
-    let countParams = [noId];
+async getByNoId(noId, limit, page, search = '', filtroColuna = null) {
+  const safeNoId = Number(noId);
+  const safeLimit = Number(limit);
+  const safePage = Number(page);
+  const offset = (safePage - 1) * safeLimit;
 
-    // Aplicar filtros de busca
-    if (search) {
-      if (filtroColuna === '_autor') {
-        // Filtrar por autor (nome do utilizador)
-        whereClause += ' AND u.nome LIKE ?';
-        countWhereClause += ' AND utilizador_id IN (SELECT id FROM utilizadores WHERE nome LIKE ?)';
-        params.push(`%${search}%`);
-        countParams.push(`%${search}%`);
-      } else if (filtroColuna) {
-        // Filtrar por campo específico no JSON
-        whereClause += ' AND JSON_EXTRACT(r.dados, ?) LIKE ?';
-        countWhereClause += ' AND JSON_EXTRACT(dados, ?) LIKE ?';
-        params.push(`$."${filtroColuna}"`, `%${search}%`);
-        countParams.push(`$."${filtroColuna}"`, `%${search}%`);
-      } else {
-        // Filtrar em todos os campos (autor + dados JSON)
-        whereClause += ' AND (u.nome LIKE ? OR JSON_SEARCH(r.dados, \'one\', ?) IS NOT NULL)';
-        countWhereClause += ' AND (utilizador_id IN (SELECT id FROM utilizadores WHERE nome LIKE ?) OR JSON_SEARCH(dados, \'one\', ?) IS NOT NULL)';
-        params.push(`%${search}%`, `%${search}%`);
-        countParams.push(`%${search}%`, `%${search}%`);
-      }
+  let whereClause = 'r.no_id = ?';
+  let countWhereClause = 'no_id = ?';
+  let params = [safeNoId];
+  let countParams = [safeNoId];
+
+  if (search) {
+    if (filtroColuna === '_autor') {
+      whereClause += ' AND u.nome LIKE ?';
+      countWhereClause += ' AND utilizador_id IN (SELECT id FROM utilizadores WHERE nome LIKE ?)';
+      params.push(`%${search}%`);
+      countParams.push(`%${search}%`);
+    } else if (filtroColuna) {
+      whereClause += ' AND JSON_EXTRACT(r.dados, ?) LIKE ?';
+      countWhereClause += ' AND JSON_EXTRACT(dados, ?) LIKE ?';
+      params.push(`$."${filtroColuna}"`, `%${search}%`);
+      countParams.push(`$."${filtroColuna}"`, `%${search}%`);
+    } else {
+      whereClause += ' AND (u.nome LIKE ? OR JSON_SEARCH(r.dados, \'one\', ?) IS NOT NULL)';
+      countWhereClause += ' AND (utilizador_id IN (SELECT id FROM utilizadores WHERE nome LIKE ?) OR JSON_SEARCH(dados, \'one\', ?) IS NOT NULL)';
+      params.push(`%${search}%`, `%${search}%`);
+      countParams.push(`%${search}%`, `%${search}%`);
     }
-
-    // Query para registros paginados com filtros
-    const registos = await this.query(
-      `SELECT r.*, u.nome as nome_utilizador 
-       FROM registos r 
-       JOIN utilizadores u ON r.utilizador_id = u.id
-       WHERE ${whereClause}
-       ORDER BY r.criado_em DESC
-       LIMIT ? OFFSET ?`,
-      [...params, limit, offset]
-    );
-
-    // Query para total de registros com filtros
-    const total = await this.count('registos', countWhereClause, countParams);
-
-    logger.success(`${registos.length} registos obtidos para nó ${noId}`);
-    
-    return this.formatPaginatedResponse(registos, total, page, limit);
   }
+
+  const registos = await this.query(
+    `SELECT r.*, u.nome as nome_utilizador 
+     FROM registos r 
+     JOIN utilizadores u ON r.utilizador_id = u.id
+     WHERE ${whereClause}
+     ORDER BY r.criado_em DESC
+     LIMIT ? OFFSET ?`,
+    [...params, safeLimit, offset]  // ← safeLimit e offset garantidos como Number
+  );
+
+  const total = await this.count('registos', countWhereClause, countParams);
+
+  logger.success(`${registos.length} registos obtidos para nó ${safeNoId}`);
+
+  return this.formatPaginatedResponse(registos, total, safePage, safeLimit);
+}
 
   /**
    * Criar novo registo
