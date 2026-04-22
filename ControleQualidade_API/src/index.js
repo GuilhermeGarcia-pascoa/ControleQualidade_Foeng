@@ -8,7 +8,7 @@ const path = require('path');
 require('dotenv').config();
 
 const logger = require('./utils/logger');
-const errorHandler = require('./utils/errorHandler');
+const { errorHandler, authErrorHandler } = require('./middleware/errorHandler');
 const { handleUploadError } = require('./config/upload');
 
 // Rotas
@@ -66,10 +66,11 @@ app.get('/api/health', (req, res) => {
 // Primeiro, capturar erros de upload (Multer)
 app.use(handleUploadError);
 
-// Depois, tratamento de erros geral
-app.use((err, req, res, next) => {
-  errorHandler(err, req, res);
-});
+// Depois, autenticação
+app.use(authErrorHandler);
+
+// Finalmente, tratamento de erros geral (SEMPRE POR ÚLTIMO)
+app.use(errorHandler);
 
 // ─── ROTA 404 ──────────────────────────────────────────────
 app.use((req, res) => {
