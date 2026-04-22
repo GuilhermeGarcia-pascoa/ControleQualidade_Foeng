@@ -32,9 +32,14 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: mode,
-          routes: {
-            '/': (_) => const LoginScreen(),
+          
+          // ✅ CORREÇÃO: O mapa de routes deve estar vazio ou sem a chave '/' 
+          // porque o parâmetro 'home' abaixo já define a rota inicial.
+          routes: const {
+            // Se tiveres outras rotas (ex: '/detalhes'), podes colocá-las aqui.
           },
+          
+          // A lógica do 'home' decide dinamicamente qual ecrã mostrar primeiro
           home: initialUser == null
               ? const LoginScreen()
               : DashboardScreen(perfil: initialUser!['perfil']),

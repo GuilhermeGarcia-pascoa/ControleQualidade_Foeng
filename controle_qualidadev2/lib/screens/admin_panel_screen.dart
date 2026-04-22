@@ -20,6 +20,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   String? _erro;
   String _filtroRole = '';
 
+  static const _porPagina = 30;
+  int _paginaAtual = 0;
+
   static const _roles = ['admin', 'gestor', 'utilizador'];
 
   ({Color bg, Color fg}) _coresRole(String role) {
@@ -92,6 +95,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   void _filtrar() {
     setState(() {
+      _paginaAtual = 0;
       _filtrados = _aplicarFiltro(_utilizadores);
     });
   }
@@ -937,12 +941,91 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         ),
       );
     }
+
+    final totalPaginas = (_filtrados.length / _porPagina).ceil();
+    final inicio = _paginaAtual * _porPagina;
+    final fim = (inicio + _porPagina).clamp(0, _filtrados.length);
+    final paginaAtual = _filtrados.sublist(inicio, fim);
+
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-      sliver: SliverList.separated(
-        itemCount: _filtrados.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _userCard(_filtrados[i], scheme, containerColor, borderColor),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          ...List.generate(paginaAtual.length, (i) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: i < paginaAtual.length - 1 ? 10 : 0),
+              child: _userCard(paginaAtual[i], scheme, containerColor, borderColor),
+            );
+          }),
+          if (totalPaginas > 1) ...[
+            const SizedBox(height: 20),
+            _buildPaginacao(scheme, containerColor, borderColor, totalPaginas),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildPaginacao(ColorScheme scheme, Color containerColor, Color borderColor, int totalPaginas) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+      decoration: BoxDecoration(
+        color: containerColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 0.5),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Botão Anterior
+          TextButton.icon(
+            onPressed: _paginaAtual > 0
+                ? () => setState(() => _paginaAtual--)
+                : null,
+            icon: const Icon(Icons.chevron_left_rounded, size: 20),
+            label: const Text('Anterior'),
+            style: TextButton.styleFrom(
+              foregroundColor: _accentColor,
+              disabledForegroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.4),
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+          // Indicador de página
+          Column(
+            children: [
+              Text(
+                'Página ${_paginaAtual + 1} de $totalPaginas',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${_filtrados.length} utilizadores',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          // Botão Próxima
+          TextButton.icon(
+            onPressed: _paginaAtual < totalPaginas - 1
+                ? () => setState(() => _paginaAtual++)
+                : null,
+            icon: const Icon(Icons.chevron_right_rounded, size: 20),
+            label: const Text('Próxima'),
+            iconAlignment: IconAlignment.end,
+            style: TextButton.styleFrom(
+              foregroundColor: _accentColor,
+              disabledForegroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.4),
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1099,4 +1182,4 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       ),
     );
   }
-} 
+}
