@@ -540,17 +540,20 @@ class DatabaseHelper {
   }
 
   // ─── REGISTOS ──────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> getRegistos(int noId) async {
+  Future<Map<String, dynamic>> getRegistos(int noId, {int limit = 50, int offset = 0}) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/registos/$noId'));
+      final response = await http.get(Uri.parse('$_baseUrl/registos/$noId?limit=$limit&offset=$offset'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['registos']);
+        return {
+          'registos': List<Map<String, dynamic>>.from(data['registos']),
+          'total': (data['total'] as num?)?.toInt() ?? 0,
+        };
       }
-      return [];
+      return {'registos': [], 'total': 0};
     } catch (e) {
       print("❌ ERRO getRegistos: $e");
-      return [];
+      return {'registos': [], 'total': 0};
     }
   }
 

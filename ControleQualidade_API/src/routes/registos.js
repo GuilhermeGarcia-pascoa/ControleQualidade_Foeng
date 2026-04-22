@@ -9,16 +9,33 @@ const router = express.Router();
 // ─── OBTER REGISTOS ───────────────────────────────────────
 router.get('/:noId', requireAuth, async (req, res) => {
   try {
+    const { noId } = req.params;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Máximo 100
+    const offset = parseInt(req.query.offset) || 0;
+
+    // Query para registros paginados
     const [rows] = await pool.execute(
       `SELECT r.*, u.nome as nome_utilizador 
        FROM registos r 
        JOIN utilizadores u ON r.utilizador_id = u.id
        WHERE r.no_id = ? 
-       ORDER BY r.criado_em DESC`,
-      [req.params.noId]
+       ORDER BY r.criado_em DESC
+       LIMIT ? OFFSET ?`,
+      [noId, limit, offset]
     );
-    logger.success(`${rows.length} registos obtidos para nó ${req.params.noId}`);
-    res.json({ success: true, registos: rows });
+
+    // Query para total de registros
+    const [count] = await pool.execute(
+      'SELECT COUNT(*) as total FROM registos WHERE no_id = ?',
+      [noId]
+    );
+
+    logger.success(`${rows.length} registos obtidos para nó ${noId} (limit: $limit, offset: $offset)`);
+    res.json({
+      success: true,
+      registos: rows,
+      total: count[0].total
+    });
   } catch (error) {
     logger.error('Erro em GET /registos/:noId', error);
     res.status(500).json({ success: false, error: error.message });

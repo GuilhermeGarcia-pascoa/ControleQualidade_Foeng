@@ -349,7 +349,9 @@ class _NosScreenState extends State<NosScreen> {
                       GestureDetector(
                         onTap: isLast ? null : () {
                           final pops = (breadcrumbItems.length - 1) - e.key;
-                          for (var i = 0; i < pops; i++) Navigator.pop(context);
+                          for (var i = 0; i < pops; i++) {
+                            Navigator.pop(context);
+                          }
                         },
                         child: Text(e.value,
                           style: TextStyle(

@@ -171,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Email field
-                                _FieldLabel(label: 'Endereço de email'),
+                                const _FieldLabel(label: 'Endereço de email'),
                                 const SizedBox(height: 8),
                                 _DarkField(
                                   controller: _emailCtrl,
@@ -183,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 const SizedBox(height: 20),
 
                                 // Password field
-                                _FieldLabel(label: 'Password'),
+                                const _FieldLabel(label: 'Password'),
                                 const SizedBox(height: 8),
                                 _DarkField(
                                   controller: _passCtrl,
