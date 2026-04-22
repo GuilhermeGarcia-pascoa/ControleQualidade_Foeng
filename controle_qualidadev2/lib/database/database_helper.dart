@@ -106,7 +106,7 @@ class DatabaseHelper {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/utilizadores/$userId/tema'),
-        headers: await _authHeaders(), // ✅ CORRIGIDO — antes não tinha token
+        headers: await _authHeaders(),
       );
       return await _handleResponse(
             response,
@@ -281,8 +281,10 @@ class DatabaseHelper {
   Future<List<No>> getNos(int projetoId, {int? paiId}) async {
     try {
       final paiParam = paiId != null ? '?pai_id=$paiId' : '?pai_id=null';
-      final response =
-          await http.get(Uri.parse('$_baseUrl/nos/$projetoId$paiParam'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/nos/$projetoId$paiParam'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['nos'] as List).map((n) => No.fromMap(n)).toList();
@@ -296,7 +298,10 @@ class DatabaseHelper {
 
   Future<No?> obterNoPorId(int noId) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/nos/info/$noId'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/nos/info/$noId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
@@ -314,7 +319,7 @@ class DatabaseHelper {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/nos'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({
           'projeto_id': projetoId,
           'pai_id': paiId,
@@ -336,7 +341,7 @@ class DatabaseHelper {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/nos/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({'nome': nome}),
       );
       return response.statusCode == 200;
@@ -350,7 +355,7 @@ class DatabaseHelper {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/nos/$noId/mover'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({'pai_id': novoPaiId}),
       );
       return response.statusCode == 200;
@@ -362,7 +367,10 @@ class DatabaseHelper {
 
   Future<void> apagarNo(int noId) async {
     try {
-      await http.delete(Uri.parse('$_baseUrl/nos/$noId'));
+      await http.delete(
+        Uri.parse('$_baseUrl/nos/$noId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
     } catch (e) {
       print("❌ ERRO apagarNo: $e");
     }
@@ -370,8 +378,10 @@ class DatabaseHelper {
 
   Future<List<No>> getAncestoresNo(int noId) async {
     try {
-      final response =
-          await http.get(Uri.parse('$_baseUrl/nos/$noId/ancestrais'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/nos/$noId/ancestrais'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['ancestrais'] as List).map((n) => No.fromMap(n)).toList();
@@ -385,8 +395,10 @@ class DatabaseHelper {
 
   Future<List<No>> getDescendentesNo(int noId) async {
     try {
-      final response =
-          await http.get(Uri.parse('$_baseUrl/nos/$noId/descendentes'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/nos/$noId/descendentes'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['descendentes'] as List)
@@ -407,7 +419,7 @@ class DatabaseHelper {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/nos/$noId/copiar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({
           'novo_pai_id': novoPaiId,
           'novo_projeto_id': novoProjetoId,
@@ -462,7 +474,10 @@ class DatabaseHelper {
   // ─── CAMPOS DINÂMICOS ──────────────────────────────────────
   Future<List<CampoDinamico>> getCampos(int noId) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/campos/$noId'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/campos/$noId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['campos'] as List)
@@ -480,7 +495,7 @@ class DatabaseHelper {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/campos'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode(dados),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -500,7 +515,7 @@ class DatabaseHelper {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/campos/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({
           'nome_campo': nomeCampo,
           'tipo_campo': tipoCampo,
@@ -519,7 +534,7 @@ class DatabaseHelper {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/campos/$campoId/ordem'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({'ordem': novaOrdem}),
       );
       return response.statusCode == 200;
@@ -531,7 +546,10 @@ class DatabaseHelper {
 
   Future<bool> apagarCampo(int id) async {
     try {
-      final response = await http.delete(Uri.parse('$_baseUrl/campos/$id'));
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/campos/$id'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       return response.statusCode == 200;
     } catch (e) {
       print("❌ ERRO apagarCampo: $e");
@@ -554,7 +572,10 @@ class DatabaseHelper {
         if (filtroColuna != null) 'filtroColuna': filtroColuna,
       });
 
-      final response = await http.get(uri);
+      final response = await http.get(
+        uri,
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {
@@ -604,7 +625,14 @@ class DatabaseHelper {
         }
       }
 
+      final token = await Session.getToken();
       final request = http.MultipartRequest('POST', uri);
+
+      // ✅ CORRIGIDO — adicionar token ao MultipartRequest
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
       request.fields['no_id'] = noId.toString();
       request.fields['utilizador_id'] = utilizadorId.toString();
       request.fields['dados_json'] = jsonEncode(dadosSemFotos);
@@ -636,8 +664,10 @@ class DatabaseHelper {
   // ─── UTILIZADOR - PROJETO ──────────────────────────────────
   Future<List<Map<String, dynamic>>> getMembros(int projetoId) async {
     try {
-      final response =
-          await http.get(Uri.parse('$_baseUrl/utilizador_projeto/$projetoId'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/utilizador_projeto/$projetoId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['membros']);
@@ -653,7 +683,7 @@ class DatabaseHelper {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/utilizador_projeto'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode(
             {'utilizador_id': utilizadorId, 'projeto_id': projetoId}),
       );
@@ -668,6 +698,7 @@ class DatabaseHelper {
     try {
       final response = await http.delete(
         Uri.parse('$_baseUrl/utilizador_projeto/$projetoId/$utilizadorId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -679,8 +710,10 @@ class DatabaseHelper {
   // ─── UTILIZADOR - NÓ ───────────────────────────────────────
   Future<List<Map<String, dynamic>>> getMembrosNo(int noId) async {
     try {
-      final response =
-          await http.get(Uri.parse('$_baseUrl/utilizador_no/$noId'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/utilizador_no/$noId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['membros']);
@@ -696,7 +729,7 @@ class DatabaseHelper {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/utilizador_no'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({'utilizador_id': utilizadorId, 'no_id': noId}),
       );
       return response.statusCode == 200;
@@ -710,6 +743,7 @@ class DatabaseHelper {
     try {
       final response = await http.delete(
         Uri.parse('$_baseUrl/utilizador_no/$noId/$utilizadorId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -722,6 +756,7 @@ class DatabaseHelper {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/utilizador_no/$noId/acesso/$userId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -737,8 +772,10 @@ class DatabaseHelper {
   // ─── BASE DE DADOS - LIMPEZA ───────────────────────────────
   Future<int> verificarOrfaoscamposDinamicos() async {
     try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/database/cleanup/orphaned-campos'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/database/cleanup/orphaned-campos'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['orphanedCount'] as int;
@@ -754,7 +791,7 @@ class DatabaseHelper {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/database/cleanup/orphaned-campos'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -768,8 +805,10 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> auditoriaCamposPorNo() async {
     try {
-      final response =
-          await http.get(Uri.parse('$_baseUrl/database/audit/campos-por-no'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/database/audit/campos-por-no'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['auditoria'] ?? []);
@@ -784,7 +823,10 @@ class DatabaseHelper {
   // ─── MÉTODOS ADICIONAIS ────────────────────────────────────
   Future<List<No>> getTodosNos(int projetoId) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/nos/$projetoId'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/nos/$projetoId'),
+        headers: await _authHeaders(), // ✅ CORRIGIDO
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return (data['nos'] as List).map((n) => No.fromMap(n)).toList();
@@ -806,7 +848,7 @@ class DatabaseHelper {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/nos/$noId/duplicar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({
           'novo_pai_id': novoPaiId,
           'projeto_id': projetoId,
@@ -831,7 +873,7 @@ class DatabaseHelper {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/campos/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _authHeaders(),
         body: jsonEncode({
           'nome_campo': nome,
           'tipo_campo': tipo,
