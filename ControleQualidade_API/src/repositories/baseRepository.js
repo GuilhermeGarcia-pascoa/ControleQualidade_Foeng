@@ -15,10 +15,7 @@ class BaseRepository {
    */
   async query(sql, params = []) {
   try {
-    console.log('=== SQL:', sql);
-    console.log('=== PARAMS:', params);
-    console.log('=== TYPES:', params.map(p => `${typeof p}(${p})`));
-    const [rows] = await this.pool.execute(sql, params);
+    const [rows] = await this.pool.query(sql, params); // ← query em vez de execute
     return rows;
   } catch (error) {
     this.logger.error(`Erro em query: ${sql}`, error);
