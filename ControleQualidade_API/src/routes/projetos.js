@@ -78,7 +78,7 @@ router.get('/trabalhador/:userId', requireAuth, validarUserIdProjeto, async (req
        ORDER BY p.criado_em DESC`,
       [req.params.userId]
     );
-    logger.success(`${rows.length} projetos obtidos para utilizado ${req.params.userId}`);
+    logger.success(`${rows.length} projetos obtidos para utilizador ${req.params.userId}`);
     res.json({ success: true, projetos: rows });
   } catch (error) {
     logger.error('Erro em GET /projetos/trabalhador/:userId', error);
@@ -130,39 +130,28 @@ router.put('/:id', requireAuth, validarAtualizarProjeto, async (req, res) => {
   }
 });
 
-// ─── DELETAR PROJETO ───────────────────────────────────────
+// ─── DELETAR PROJETO (seguro com CASCADE DELETE no schema) ──
+// Requer: ON DELETE CASCADE nas foreign keys de 'nos', 'utilizador_projeto'
+// Ver: migrate_cascade.sql para configurar o schema
 router.delete('/:id', requireAuth, validarIdProjeto, async (req, res) => {
-  const connection = await pool.getConnection();
+  const conn = await pool.getConnection();
   try {
-    const projetoId = req.params.id;
-    logger.info(`Eliminando projeto ${projetoId}...`);
-    
-    await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
-    const [nos] = await connection.execute('SELECT id FROM nos WHERE projeto_id = ?', [projetoId]);
-    const nosIds = nos.map(n => n.id);
-    
-    if (nosIds.length > 0) {
-      const placeholders = nosIds.map(() => '?').join(',');
-      await connection.execute(`DELETE FROM registos WHERE no_id IN (${placeholders})`, nosIds);
-      await connection.execute(`DELETE FROM campos_dinamicos WHERE no_id IN (${placeholders})`, nosIds);
-      await connection.execute(`DELETE FROM utilizador_no WHERE no_id IN (${placeholders})`, nosIds);
-    }
-    
-    await connection.execute('DELETE FROM nos WHERE projeto_id = ?', [projetoId]);
-    await connection.execute('DELETE FROM utilizador_projeto WHERE projeto_id = ?', [projetoId]);
-    await connection.execute('DELETE FROM projetos WHERE id = ?', [projetoId]);
-    await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
-    
-    logger.success(`Projeto ${projetoId} eliminado`);
-    res.json({ success: true, nosApagados: nosIds.length });
+    await conn.beginTransaction();
+
+    // Com CASCADE DELETE configurado no MySQL, este único DELETE
+    // elimina automaticamente: nos → registos, campos_dinamicos, utilizador_no
+    // E também: utilizador_projeto do projeto
+    await conn.execute('DELETE FROM projetos WHERE id = ?', [req.params.id]);
+
+    await conn.commit();
+    logger.success(`Projeto ${req.params.id} eliminado (cascade)`);
+    res.json({ success: true });
   } catch (error) {
+    await conn.rollback();
     logger.error('Erro em DELETE /projetos/:id', error);
-    try {
-      await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
-    } catch (e) {}
     res.status(500).json({ success: false, error: error.message });
   } finally {
-    if (connection) connection.release();
+    conn.release();
   }
 });
 
@@ -177,11 +166,11 @@ router.post('/:id/copiar', requireAuth, validarIdProjeto, async (req, res) => {
     );
     const novoProjetoId = result.insertId;
     const [nosRaiz] = await pool.execute('SELECT id FROM nos WHERE projeto_id = ? AND pai_id IS NULL', [req.params.id]);
-    
+
     for (const no of nosRaiz) {
       await copiarNoRecursivo(pool, no.id, null, novoProjetoId, false, true, true);
     }
-    
+
     logger.success(`Projeto copiado para ${novoProjetoId}`);
     res.json({ success: true, id: novoProjetoId });
   } catch (error) {
