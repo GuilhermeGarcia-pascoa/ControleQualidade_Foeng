@@ -846,15 +846,17 @@ class DatabaseHelper {
     required bool incluirCampos,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'projeto_id': projetoId,
+        'incluir_subpastas': incluirSubpastas,
+        'incluir_campos': incluirCampos,
+      };
+      if (novoPaiId != null) body['novo_pai_id'] = novoPaiId;
+
       final response = await http.post(
         Uri.parse('$_baseUrl/nos/$noId/duplicar'),
         headers: await _authHeaders(),
-        body: jsonEncode({
-          'novo_pai_id': novoPaiId,
-          'projeto_id': projetoId,
-          'incluir_subpastas': incluirSubpastas,
-          'incluir_campos': incluirCampos,
-        }),
+        body: jsonEncode(body),
       );
       return response.statusCode == 200;
     } catch (e) {
