@@ -336,11 +336,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _confirmarLogout() async {
-    // Fechar o drawer antes de mostrar o diálogo
-    if (Scaffold.of(context).isDrawerOpen) {
+    // Fechar o drawer antes de mostrar o diálogo (de forma segura, sem Scaffold.of)
+    try {
       Navigator.of(context).pop();
-      await Future.delayed(const Duration(milliseconds: 200));
-    }
+    } catch (_) {}
+    await Future.delayed(const Duration(milliseconds: 200));
     if (!mounted) return;
     final confirm = await showDialog<bool>(
       context: context,
