@@ -7,6 +7,7 @@ import '../utils/session.dart';
 import 'gerir_membros_screen.dart';
 import '../theme/app_theme.dart';
 import 'admin_panel_screen.dart';
+import 'login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String perfil;
@@ -335,8 +336,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _confirmarLogout() async {
-    Navigator.of(context).pop();
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Fechar o drawer antes de mostrar o diálogo
+    if (Scaffold.of(context).isDrawerOpen) {
+      Navigator.of(context).pop();
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
     if (!mounted) return;
     final confirm = await showDialog<bool>(
       context: context,
@@ -396,8 +400,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (confirm == true && mounted) {
       await Session.logout();
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true)
-          .pushNamedAndRemoveUntil('/', (route) => false);
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 

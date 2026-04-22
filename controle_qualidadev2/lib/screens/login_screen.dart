@@ -30,6 +30,22 @@ class _LoginScreenState extends State<LoginScreen>
     _slideAnim = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut));
     _fadeCtrl.forward();
+    _checkSessaoAtiva();
+  }
+
+  /// Após refresh da página, verifica se já existe sessão guardada e redireciona.
+  Future<void> _checkSessaoAtiva() async {
+    final token = await Session.getToken();
+    final user = await Session.getUser();
+    if (token != null && token.isNotEmpty && user != null && mounted) {
+      final perfil = user['perfil'] as String? ?? '';
+      await AppTheme.loadTheme();
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => DashboardScreen(perfil: perfil)),
+      );
+    }
   }
 
   @override
