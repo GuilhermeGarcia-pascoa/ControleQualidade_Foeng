@@ -1,64 +1,71 @@
-# Implementação de Paginação no Backend - Registros
+# Implementação de Paginação e Filtros no Backend - Registros
 
 ## Alterações Realizadas
 
 ### Endpoint GET /registos/:noId
 - **Arquivo modificado**: `src/routes/registos.js`
-- **Parâmetros de query adicionados**:
+- **Novos parâmetros de query**:
+  - `page` (padrão: 1) - Número da página (1-based)
   - `limit` (padrão: 50, máximo: 100)
-  - `offset` (padrão: 0)
+  - `search` - String de busca
+  - `filtroColuna` - Coluna específica ('_autor' ou nome do campo) ou null para todas
+
+### Lógica de Filtros
+- **Filtro por autor**: `filtroColuna = '_autor'` → filtra `u.nome`
+- **Filtro por campo específico**: `filtroColuna = 'nome_campo'` → filtra `JSON_EXTRACT(dados, '$.nome_campo')`
+- **Filtro geral**: `filtroColuna = null` → filtra autor + qualquer campo no JSON usando `JSON_SEARCH`
 
 ### Estrutura da Resposta
 ```json
 {
   "success": true,
   "registos": [...],
-  "total": 150
+  "total": 150,
+  "page": 1,
+  "limit": 50,
+  "totalPages": 3
 }
 ```
 
-### Validações
-- Limit máximo de 100 registros por página
-- Offset deve ser um número inteiro não negativo
-- Mantém compatibilidade com chamadas sem parâmetros (retorna primeiros 50 registros)
-
-### Queries SQL
-1. **Registros paginados**:
+### Queries SQL Atualizadas
+1. **Registros filtrados e paginados**:
    ```sql
    SELECT r.*, u.nome as nome_utilizador
    FROM registos r
    JOIN utilizadores u ON r.utilizador_id = u.id
-   WHERE r.no_id = ?
+   WHERE [whereClause com filtros]
    ORDER BY r.criado_em DESC
    LIMIT ? OFFSET ?
    ```
 
-2. **Contagem total**:
+2. **Contagem total com filtros**:
    ```sql
-   SELECT COUNT(*) as total FROM registos WHERE no_id = ?
+   SELECT COUNT(*) as total FROM registos WHERE [countWhereClause com filtros]
    ```
 
 ## Como Testar
-1. **Sem paginação** (compatibilidade):
+1. **Sem filtros**:
    ```
-   GET /api/registos/1
-   ```
-   Retorna primeiros 50 registros + total
-
-2. **Com paginação**:
-   ```
-   GET /api/registos/1?limit=20&offset=0
-   GET /api/registos/1?limit=20&offset=20
+   GET /api/registos/1?page=1&limit=50
    ```
 
-3. **Limite máximo**:
+2. **Filtro por autor**:
    ```
-   GET /api/registos/1?limit=150
+   GET /api/registos/1?page=1&limit=50&search=João&filtroColuna=_autor
    ```
-   Será limitado a 100
+
+3. **Filtro por campo específico**:
+   ```
+   GET /api/registos/1?page=1&limit=50&search=valor&filtroColuna=nome_campo
+   ```
+
+4. **Filtro geral**:
+   ```
+   GET /api/registos/1?page=1&limit=50&search=termo
+   ```
 
 ## Benefícios
-- Redução no tempo de resposta para listas grandes
-- Menor uso de memória no servidor
-- Melhor experiência para usuários com muitos registros
-- Preparado para escalabilidade
+- Filtros aplicados no backend antes da paginação
+- Resultados precisos e consistentes
+- Suporte a paginação clássica
+- Performance otimizada para grandes datasets

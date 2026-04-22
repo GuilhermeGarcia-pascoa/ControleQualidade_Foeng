@@ -27,10 +27,9 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
   No? _no;
 
   // Paginação
-  int _offset = 0;
+  int _currentPage = 1;
+  int _totalPages = 1;
   final int _limit = 50;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
   int _total = 0;
 
   String _filtroBusca = '';
@@ -50,12 +49,10 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
         CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _carregar();
     _searchCtrl.addListener(_onSearch);
-    _scrollV.addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    _scrollV.removeListener(_onScroll);
     _scrollV.dispose();
     _scrollH.dispose();
     _searchCtrl.dispose();
@@ -71,9 +68,14 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
       final camposRaw =
           await DatabaseHelper.instance.getCampos(widget.noId);
       final registosResponse =
-          await DatabaseHelper.instance.getRegistos(widget.noId, limit: _limit, offset: 0);
+          await DatabaseHelper.instance.getRegistos(widget.noId,
+              page: _currentPage,
+              limit: _limit,
+              search: _filtroBusca.isNotEmpty ? _filtroBusca : null,
+              filtroColuna: _filtroColuna);
       final registosRaw = registosResponse['registos'];
       final total = registosResponse['total'];
+      final totalPages = registosResponse['totalPages'];
 
       setState(() {
         _no = noData;
@@ -81,9 +83,8 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
             camposRaw.map((c) => {'id': c.id, 'nome': c.nomeCampo}).toList();
         _todos = registosRaw;
         _filtrados = List.from(_todos);
-        _offset = registosRaw.length as int;
-        _hasMore = registosRaw.length == _limit;
         _total = total;
+        _totalPages = totalPages;
         _loading = false;
       });
       _animCtrl.forward(from: 0);
@@ -99,48 +100,11 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
     }
   }
 
-  void _onScroll() {
-    if (_scrollV.position.pixels >= _scrollV.position.maxScrollExtent - 200 &&
-        !_isLoadingMore &&
-        _hasMore &&
-        !_loading) {
-      _carregarMais();
-    }
-  }
-
-  Future<void> _carregarMais() async {
-    if (_isLoadingMore || !_hasMore) return;
-
-    setState(() => _isLoadingMore = true);
-    try {
-      final registosResponse =
-          await DatabaseHelper.instance.getRegistos(widget.noId, limit: _limit, offset: _offset);
-      final novosRegistos = registosResponse['registos'];
-
-      setState(() {
-        _todos.addAll(novosRegistos);
-        _filtrados = List.from(_todos); // Reaplicar filtros
-        _offset += novosRegistos.length as int;
-        _hasMore = novosRegistos.length == _limit;
-        _isLoadingMore = false;
-      });
-      _aplicarFiltros(); // Reaplicar filtros após adicionar
-    } catch (e) {
-      setState(() => _isLoadingMore = false);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erro ao carregar mais registos: $e'),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
-    }
-  }
-
   void _onSearch() {
     setState(() {
       _filtroBusca = _searchCtrl.text.trim().toLowerCase();
-      _aplicarFiltros();
+      _currentPage = 1; // Reset to first page when search changes
+      _carregar();
     });
   }
 
@@ -155,29 +119,35 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
     }
   }
 
-  void _aplicarFiltros() {
-    var lista = List.from(_todos);
-    if (_filtroBusca.isNotEmpty) {
-      lista = lista.where((reg) {
-        final dados = _parseDados(reg);
-        final autor =
-            (reg['nome_utilizador'] ?? '').toString().toLowerCase();
-        if (_filtroColuna == '_autor') {
-          return autor.contains(_filtroBusca);
-        }
-        if (_filtroColuna != null) {
-          return (dados[_filtroColuna] ?? '')
-              .toString()
-              .toLowerCase()
-              .contains(_filtroBusca);
-        }
-        return dados.values
-                .any((v) => v.toString().toLowerCase().contains(_filtroBusca)) ||
-            autor.contains(_filtroBusca);
-      }).toList();
+  void _previousPage() {
+    if (_currentPage > 1) {
+      setState(() => _currentPage--);
+      _carregar();
     }
-    if (_sortColuna != null) {
-      lista.sort((a, b) {
+  }
+
+  void _nextPage() {
+    if (_currentPage < _totalPages) {
+      setState(() => _currentPage++);
+      _carregar();
+    }
+  }
+
+  void _goToPage(int page) {
+    if (page >= 1 && page <= _totalPages && page != _currentPage) {
+      setState(() => _currentPage = page);
+      _carregar();
+    }
+  }
+
+  void _toggleSort(String coluna) {
+    setState(() {
+      _sortColuna == coluna
+          ? _sortAsc = !_sortAsc
+          : (_sortColuna = coluna, _sortAsc = true);
+      // Sorting is now handled on backend if needed, but for now keep local
+      _filtrados = List.from(_filtrados);
+      _filtrados.sort((a, b) {
         String va;
         String vb;
         if (_sortColuna == '_autor') {
@@ -194,16 +164,6 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
             : va.compareTo(vb);
         return _sortAsc ? cmp : -cmp;
       });
-    }
-    _filtrados = lista;
-  }
-
-  void _toggleSort(String coluna) {
-    setState(() {
-      _sortColuna == coluna
-          ? _sortAsc = !_sortAsc
-          : (_sortColuna = coluna, _sortAsc = true);
-      _aplicarFiltros();
     });
   }
 
@@ -214,7 +174,8 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
       _filtroColuna = null;
       _sortColuna = null;
       _sortAsc = true;
-      _filtrados = List.from(_todos);
+      _currentPage = 1;
+      _carregar();
     });
   }
 
@@ -321,7 +282,8 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
                       isDark: isDark,
                       onColumnFilter: (col) => setState(() {
                         _filtroColuna = _filtroColuna == col ? null : col;
-                        _aplicarFiltros();
+                        _currentPage = 1; // Reset to first page when filter changes
+                        _carregar();
                       }),
                       onClearFilters: _limparFiltros,
                     ),
@@ -353,16 +315,48 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
                                   isImagem: _isImagem,
                                   urlImagem: _urlImagem,
                                   onViewImage: _verImagemFullscreen,
-                                  isLoadingMore: _isLoadingMore,
                                 ),
                               ),
-                              if (_isLoadingMore)
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
+                              // ─── PAGINATION CONTROLS ──────────────────────
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppTheme.darkSurfaceRaised : Colors.white,
+                                  border: Border(top: BorderSide(color: isDark ? AppTheme.darkBorder : AppTheme.neutral200)),
                                 ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Página $_currentPage de $_totalPages',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isDark ? AppTheme.neutral400 : AppTheme.neutral600,
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.chevron_left_rounded),
+                                          onPressed: _currentPage > 1 ? _previousPage : null,
+                                          color: _currentPage > 1
+                                              ? (isDark ? AppTheme.neutral300 : AppTheme.neutral700)
+                                              : AppTheme.neutral400,
+                                          iconSize: 20,
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.chevron_right_rounded),
+                                          onPressed: _currentPage < _totalPages ? _nextPage : null,
+                                          color: _currentPage < _totalPages
+                                              ? (isDark ? AppTheme.neutral300 : AppTheme.neutral700)
+                                              : AppTheme.neutral400,
+                                          iconSize: 20,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                     ),
@@ -740,7 +734,6 @@ class _DataTableView extends StatelessWidget {
   final bool Function(String?) isImagem;
   final String Function(String) urlImagem;
   final void Function(String) onViewImage;
-  final bool isLoadingMore;
 
   const _DataTableView({
     required this.campos,
@@ -755,7 +748,6 @@ class _DataTableView extends StatelessWidget {
     required this.isImagem,
     required this.urlImagem,
     required this.onViewImage,
-    required this.isLoadingMore,
   });
 
   @override

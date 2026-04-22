@@ -11,30 +11,64 @@ router.get('/:noId', requireAuth, async (req, res) => {
   try {
     const { noId } = req.params;
     const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Máximo 100
-    const offset = parseInt(req.query.offset) || 0;
+    const page = parseInt(req.query.page) || 1;
+    const offset = (page - 1) * limit;
+    const search = req.query.search ? req.query.search.trim() : '';
+    const filtroColuna = req.query.filtroColuna || null;
 
-    // Query para registros paginados
+    let whereClause = 'r.no_id = ?';
+    let params = [noId];
+    let countWhereClause = 'no_id = ?';
+    let countParams = [noId];
+
+    // Aplicar filtros
+    if (search) {
+      if (filtroColuna === '_autor') {
+        // Filtrar por autor
+        whereClause += ' AND u.nome LIKE ?';
+        countWhereClause += ' AND utilizador_id IN (SELECT id FROM utilizadores WHERE nome LIKE ?)';
+        params.push(`%${search}%`);
+        countParams.push(`%${search}%`);
+      } else if (filtroColuna) {
+        // Filtrar por campo específico no JSON
+        whereClause += ' AND JSON_EXTRACT(r.dados, ?) LIKE ?';
+        countWhereClause += ' AND JSON_EXTRACT(dados, ?) LIKE ?';
+        params.push(`$."${filtroColuna}"`, `%${search}%`);
+        countParams.push(`$."${filtroColuna}"`, `%${search}%`);
+      } else {
+        // Filtrar em todos os campos (autor + dados JSON)
+        whereClause += ' AND (u.nome LIKE ? OR JSON_SEARCH(r.dados, \'one\', ?) IS NOT NULL)';
+        countWhereClause += ' AND (utilizador_id IN (SELECT id FROM utilizadores WHERE nome LIKE ?) OR JSON_SEARCH(dados, \'one\', ?) IS NOT NULL)';
+        params.push(`%${search}%`, `%${search}%`);
+        countParams.push(`%${search}%`, `%${search}%`);
+      }
+    }
+
+    // Query para registros paginados com filtros
     const [rows] = await pool.execute(
       `SELECT r.*, u.nome as nome_utilizador 
        FROM registos r 
        JOIN utilizadores u ON r.utilizador_id = u.id
-       WHERE r.no_id = ? 
+       WHERE ${whereClause}
        ORDER BY r.criado_em DESC
        LIMIT ? OFFSET ?`,
-      [noId, limit, offset]
+      [...params, limit, offset]
     );
 
-    // Query para total de registros
+    // Query para total de registros com filtros
     const [count] = await pool.execute(
-      'SELECT COUNT(*) as total FROM registos WHERE no_id = ?',
-      [noId]
+      `SELECT COUNT(*) as total FROM registos WHERE ${countWhereClause}`,
+      countParams
     );
 
-    logger.success(`${rows.length} registos obtidos para nó ${noId} (limit: $limit, offset: $offset)`);
+    logger.success(`${rows.length} registos obtidos para nó ${noId} (page: ${page}, limit: ${limit}, search: '${search}', filtroColuna: '${filtroColuna}')`);
     res.json({
       success: true,
       registos: rows,
-      total: count[0].total
+      total: count[0].total,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(count[0].total / limit)
     });
   } catch (error) {
     logger.error('Erro em GET /registos/:noId', error);

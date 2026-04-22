@@ -540,20 +540,47 @@ class DatabaseHelper {
   }
 
   // ─── REGISTOS ──────────────────────────────────────────────
-  Future<Map<String, dynamic>> getRegistos(int noId, {int limit = 50, int offset = 0}) async {
+  Future<Map<String, dynamic>> getRegistos(int noId, {
+    int page = 1,
+    int limit = 50,
+    String? search,
+    String? filtroColuna,
+  }) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/registos/$noId?limit=$limit&offset=$offset'));
+      final uri = Uri.parse('$_baseUrl/registos/$noId').replace(queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (filtroColuna != null) 'filtroColuna': filtroColuna,
+      });
+
+      final response = await http.get(uri);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {
           'registos': List<Map<String, dynamic>>.from(data['registos']),
           'total': (data['total'] as num?)?.toInt() ?? 0,
+          'page': (data['page'] as num?)?.toInt() ?? 1,
+          'limit': (data['limit'] as num?)?.toInt() ?? 50,
+          'totalPages': (data['totalPages'] as num?)?.toInt() ?? 1,
         };
       }
-      return {'registos': [], 'total': 0};
+      return {
+        'registos': [],
+        'total': 0,
+        'page': 1,
+        'limit': 50,
+        'totalPages': 1,
+      };
     } catch (e) {
       print("❌ ERRO getRegistos: $e");
-      return {'registos': [], 'total': 0};
+      return {
+        'registos': [],
+        'total': 0,
+        'page': 1,
+        'limit': 50,
+        'totalPages': 1,
+      };
     }
   }
 
