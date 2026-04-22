@@ -39,7 +39,6 @@ body('opcoes')
   .isString()
   .isLength({ max: 1000 })
   .withMessage('opcoes demasiado longo'),
-    .withMessage('opcoes demasiado longo'),
   body('obrigatorio')
     .optional()
     .isBoolean()
