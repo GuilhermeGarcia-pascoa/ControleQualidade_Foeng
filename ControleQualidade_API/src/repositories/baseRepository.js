@@ -14,14 +14,17 @@ class BaseRepository {
    * Executa uma query SELECT
    */
   async query(sql, params = []) {
-    try {
-      const [rows] = await this.pool.execute(sql, params);
-      return rows;
-    } catch (error) {
-      this.logger.error(`Erro em query: ${sql}`, error);
-      throw error;
-    }
+  try {
+    console.log('=== SQL:', sql);
+    console.log('=== PARAMS:', params);
+    console.log('=== TYPES:', params.map(p => `${typeof p}(${p})`));
+    const [rows] = await this.pool.execute(sql, params);
+    return rows;
+  } catch (error) {
+    this.logger.error(`Erro em query: ${sql}`, error);
+    throw error;
   }
+}
 
   /**
    * Executa uma query e retorna primeira linha
