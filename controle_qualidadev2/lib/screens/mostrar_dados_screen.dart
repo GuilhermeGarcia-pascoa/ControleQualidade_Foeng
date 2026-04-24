@@ -79,8 +79,13 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
 
       setState(() {
         _no = noData;
-        _campos =
-            camposRaw.map((c) => {'id': c.id, 'nome': c.nomeCampo}).toList();
+        _campos = camposRaw
+            .map((c) => {
+                  'id': c.id,
+                  'nome': c.nomeCampo,
+                  'tipo': c.tipoCampo,
+                })
+            .toList();
         _todos = registosRaw;
         _filtrados = List.from(_todos);
         _total = total;
@@ -175,6 +180,11 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
   bool get _temFiltros =>
       _filtroBusca.isNotEmpty || _filtroColuna != null || _sortColuna != null;
 
+  bool _campoEhImagem(Map<String, dynamic> campo) {
+    final tipo = (campo['tipo'] ?? '').toString().toLowerCase();
+    return tipo == 'foto' || tipo == 'imagem' || tipo == 'file';
+  }
+
   bool _isImagem(String? val) {
     if (val == null || val.isEmpty) return false;
     final lower = val.toLowerCase();
@@ -185,6 +195,43 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
                 lower.endsWith('.png') ||
                 lower.endsWith('.gif') ||
                 lower.endsWith('.webp')));
+  }
+
+  String? _extrairImagemDoRegisto(
+      Map<String, dynamic> dados, Map<String, dynamic> campo) {
+    final nomeCampo = campo['nome']?.toString();
+    final valorDireto = dados[nomeCampo];
+    if (_isImagem(valorDireto?.toString())) {
+      return valorDireto.toString();
+    }
+
+    final ficheiros = dados['_files'];
+    if (ficheiros is! List) return null;
+
+    String? primeiraImagem;
+
+    for (final ficheiro in ficheiros) {
+      if (ficheiro is! Map) continue;
+
+      final mapa = Map<String, dynamic>.from(ficheiro);
+      final caminho = mapa['path']?.toString();
+      if (!_isImagem(caminho)) continue;
+
+      primeiraImagem ??= caminho;
+
+      final fieldname = mapa['fieldname']?.toString();
+      if (fieldname != null &&
+          nomeCampo != null &&
+          fieldname.toLowerCase() == nomeCampo.toLowerCase()) {
+        return caminho;
+      }
+    }
+
+    if (ficheiros.length == 1) {
+      return primeiraImagem;
+    }
+
+    return null;
   }
 
   String _urlImagem(String caminho) {
@@ -305,7 +352,9 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
                                   scrollH: _scrollH,
                                   onSort: _toggleSort,
                                   parseDados: _parseDados,
+                                  isCampoImagem: _campoEhImagem,
                                   isImagem: _isImagem,
+                                  resolveImagePath: _extrairImagemDoRegisto,
                                   urlImagem: _urlImagem,
                                   onViewImage: _verImagemFullscreen,
                                 ),
@@ -724,7 +773,10 @@ class _DataTableView extends StatelessWidget {
   final ScrollController scrollH;
   final void Function(String) onSort;
   final Map<String, dynamic> Function(dynamic) parseDados;
+  final bool Function(Map<String, dynamic>) isCampoImagem;
   final bool Function(String?) isImagem;
+  final String? Function(Map<String, dynamic>, Map<String, dynamic>)
+      resolveImagePath;
   final String Function(String) urlImagem;
   final void Function(String) onViewImage;
 
@@ -738,7 +790,9 @@ class _DataTableView extends StatelessWidget {
     required this.scrollH,
     required this.onSort,
     required this.parseDados,
+    required this.isCampoImagem,
     required this.isImagem,
+    required this.resolveImagePath,
     required this.urlImagem,
     required this.onViewImage,
   });
@@ -847,27 +901,31 @@ class _DataTableView extends StatelessWidget {
                       // ── COLUNAS DINÂMICAS ────────────────────────
                       ...campos.map((c) {
                         final val = dados[c['nome']];
-                        final empty = val == null ||
-                            val.toString().trim().isEmpty;
+                        final imagePath = isCampoImagem(c)
+                            ? resolveImagePath(dados, c)
+                            : null;
+                        final empty = imagePath == null &&
+                            (val == null || val.toString().trim().isEmpty);
                         if (empty) {
-                          return DataCell(Text('—',
+                          return DataCell(Text('�',
                               style: TextStyle(
                                   color: isDark
                                       ? AppTheme.neutral600
                                       : AppTheme.neutral300)));
                         }
-                        if (isImagem(val?.toString())) {
+                        if (imagePath != null || isImagem(val?.toString())) {
+                          final caminho = imagePath ?? val.toString();
                           return DataCell(Padding(
                             padding: const EdgeInsets.symmetric(
                                 vertical: 8),
                             child: GestureDetector(
                               onTap: () => onViewImage(
-                                  urlImagem(val.toString())),
+                                  urlImagem(caminho)),
                               child: ClipRRect(
                                 borderRadius:
                                     BorderRadius.circular(8),
                                 child: Image.network(
-                                    urlImagem(val.toString()),
+                                    urlImagem(caminho),
                                     height: 44,
                                     width: 44,
                                     fit: BoxFit.cover,
