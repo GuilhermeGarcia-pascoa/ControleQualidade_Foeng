@@ -242,35 +242,159 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
   void _verImagemFullscreen(String url) {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(16),
-        child: Stack(clipBehavior: Clip.none, children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: Image.network(url,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Container(
-                      width: 200,
-                      height: 200,
-                      color: AppTheme.darkSurfaceHigh,
-                      child: const Center(
-                          child: Icon(Icons.broken_image,
-                              size: 48, color: AppTheme.neutral500)))),
+        insetPadding: const EdgeInsets.all(0),
+        elevation: 0,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Fundo semitransparente - tocável para fechar
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                color: Colors.black.withOpacity(0.85),
+              ),
             ),
-          ),
-          Positioned(
-              top: -12,
-              right: -12,
-              child: FloatingActionButton.small(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppTheme.neutral800,
-                  onPressed: () => Navigator.pop(context),
-                  child: const Icon(Icons.close_rounded))),
-        ]),
+            
+            // Conteúdo centrado
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 24,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: InteractiveViewer(
+                            minScale: 0.8,
+                            maxScale: 4.0,
+                            boundaryMargin: const EdgeInsets.all(16),
+                            child: Image.network(
+                              url,
+                              fit: BoxFit.contain,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            (loadingProgress.expectedTotalBytes ?? 1)
+                                        : null,
+                                    color: Colors.white,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (_, __, ___) => Container(
+                                color: AppTheme.darkSurfaceHigh,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.broken_image,
+                                      size: 64,
+                                      color: AppTheme.neutral500,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Erro ao carregar imagem',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Botão fechar no topo direito
+            Positioned(
+              top: 24,
+              right: 24,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.95),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: AppTheme.neutral800,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Instruções no topo esquerdo
+            Positioned(
+              bottom: 24,
+              left: 24,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.pinch_rounded,
+                      size: 16,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Arraste para ampliar • Toque para fechar',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -907,7 +1031,7 @@ class _DataTableView extends StatelessWidget {
                         final empty = imagePath == null &&
                             (val == null || val.toString().trim().isEmpty);
                         if (empty) {
-                          return DataCell(Text('�',
+                          return DataCell(Text(' ',
                               style: TextStyle(
                                   color: isDark
                                       ? AppTheme.neutral600
