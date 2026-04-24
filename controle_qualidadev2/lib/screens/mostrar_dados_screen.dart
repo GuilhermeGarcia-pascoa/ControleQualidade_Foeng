@@ -208,8 +208,6 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
     final ficheiros = dados['_files'];
     if (ficheiros is! List) return null;
 
-    String? primeiraImagem;
-
     for (final ficheiro in ficheiros) {
       if (ficheiro is! Map) continue;
 
@@ -217,18 +215,12 @@ class _MostrarDadosScreenState extends State<MostrarDadosScreen>
       final caminho = mapa['path']?.toString();
       if (!_isImagem(caminho)) continue;
 
-      primeiraImagem ??= caminho;
-
       final fieldname = mapa['fieldname']?.toString();
       if (fieldname != null &&
           nomeCampo != null &&
           fieldname.toLowerCase() == nomeCampo.toLowerCase()) {
         return caminho;
       }
-    }
-
-    if (ficheiros.length == 1) {
-      return primeiraImagem;
     }
 
     return null;
