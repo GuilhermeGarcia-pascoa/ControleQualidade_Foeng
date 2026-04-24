@@ -41,7 +41,8 @@ app.use(express.json({ limit: '10mb' }));
 
 // ─── SERVIR UPLOADS COM SEGURANÇA ──────────────────────────
 // Apenas servir ficheiros estáticos, sem permitir execução de scripts
-app.use('/uploads', express.static('uploads', {
+// Aplicar CORS explicitamente para uploads (necessário para Flutter Web carregar imagens)
+app.use('/uploads', cors(), express.static('uploads', {
   dotfiles: 'deny', // Não servir ficheiros ocultos (.htaccess, .env, etc)
   index: false      // Não servir listagem de diretório
 }));

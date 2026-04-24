@@ -6,6 +6,13 @@ const validate = require('../middleware/validate');
 
 const router = express.Router();
 
+// Tipos de campo aceites
+const TIPOS_CAMPO = [
+  'text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file',
+  'texto', 'numero', 'data', 'selecao', 'imagem',
+  'dropdown', 'foto'
+];
+
 // Validações para parâmetros
 const validarNoId = [
   param('noId').isInt({ min: 1 }).withMessage('ID do nó inválido'),
@@ -29,16 +36,16 @@ const validarCriarCampo = [
     .isLength({ max: 255 })
     .withMessage('nome_campo demasiado longo (máx. 255 caracteres)'),
   body('tipo_campo')
-  .trim()
-  .notEmpty()
-  .withMessage('tipo_campo é obrigatório')
-  .isIn(['text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file', 'texto', 'numero', 'data', 'selecao', 'imagem'])
-  .withMessage('tipo_campo inválido'),
-body('opcoes')
-  .optional({ nullable: true }) 
-  .isString()
-  .isLength({ max: 1000 })
-  .withMessage('opcoes demasiado longo'),
+    .trim()
+    .notEmpty()
+    .withMessage('tipo_campo é obrigatório')
+    .isIn(TIPOS_CAMPO)
+    .withMessage('tipo_campo inválido'),
+  body('opcoes')
+    .optional({ nullable: true })
+    .isString()
+    .isLength({ max: 1000 })
+    .withMessage('opcoes demasiado longo'),
   body('obrigatorio')
     .optional()
     .isBoolean()
@@ -65,10 +72,10 @@ const validarAtualizarCampo = [
     .trim()
     .notEmpty()
     .withMessage('tipo_campo não pode estar vazio')
-    .isIn(['text', 'email', 'number', 'date', 'checkbox', 'select', 'textarea', 'file', 'texto', 'numero', 'data', 'selecao', 'imagem'])
+    .isIn(TIPOS_CAMPO)
     .withMessage('tipo_campo inválido'),
   body('opcoes')
-    .optional({ nullable: true })  // ← corrigido
+    .optional({ nullable: true })
     .isString()
     .isLength({ max: 1000 })
     .withMessage('opcoes demasiado longo'),
@@ -163,7 +170,7 @@ router.delete('/:id', validarIdCampo, async (req, res) => {
     }
   } catch (error) {
     logger.error('Erro em DELETE /campos/:id', error);
-    
+
     if (error.code === 'ER_ROW_IS_REFERENCED_2') {
       res.status(400).json({
         success: false,

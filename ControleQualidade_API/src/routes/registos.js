@@ -64,7 +64,7 @@ router.get('/:noId', requireAuth, validarObterRegistos, asyncHandler(async (req,
 
 // ─── CRIAR REGISTO (com upload de ficheiros) ───────────────
 router.post('/', requireAuth, (req, res, next) => {
-  upload.array('files', 5)(req, res, (err) => {
+  upload.any()(req, res, (err) => {   // ← aceita ficheiros com qualquer nome de campo
     if (err) {
       return res.status(400).json({
         success: false,

@@ -54,7 +54,14 @@ class RegistosService extends BaseService {
 
       // Adicionar caminhos dos ficheiros
       if (files && files.length > 0) {
+        // ✅ Mapear cada arquivo ao seu campo correspondente
+        for (const f of files) {
+          dados[f.fieldname] = `/uploads/${f.filename}`;
+        }
+        
+        // Guardar metadados dos arquivos em _files para referência
         dados._files = files.map(f => ({
+          fieldname: f.fieldname,
           filename: f.filename,
           originalName: f.originalname,
           mimetype: f.mimetype,
@@ -62,7 +69,7 @@ class RegistosService extends BaseService {
           path: `/uploads/${f.filename}`
         }));
         
-        this.logger.info(`${files.length} ficheiro(s) adicionado(s) ao registo`);
+        this.logger.info(`${files.length} ficheiro(s) adicionado(s) aos campos: ${files.map(f => f.fieldname).join(', ')}`);
       }
 
       // Chamar repository
